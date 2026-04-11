@@ -1,0 +1,4 @@
+target/
+fixtures/full/
+*.swp
+.DS_Store

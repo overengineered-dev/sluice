@@ -1,0 +1,134 @@
+use super::document::Document;
+use super::uinfo::{parse_uinfo, Uinfo};
+use crate::error::ParseError;
+
+/// OSINT-level interpretation of an index document.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub enum Record {
+    Descriptor,
+    AllGroups,
+    RootGroups,
+    ArtifactAdd(Uinfo),
+    ArtifactRemove(Uinfo),
+    Unknown,
+}
+
+/// Classify a document into a [`Record`].
+///
+/// Rules, checked in priority order:
+/// 1. `DESCRIPTOR` field → `Descriptor`
+/// 2. `allGroups` field → `AllGroups`
+/// 3. `rootGroups` field → `RootGroups`
+/// 4. `u` field → `ArtifactAdd(parse_uinfo(u))`
+/// 5. `del` field → `ArtifactRemove(parse_uinfo(del))`
+/// 6. otherwise → `Unknown`
+///
+/// Returns `Err` only when a UINFO string on an add/remove record fails to
+/// parse; structural documents never fail.
+pub fn classify(doc: &Document) -> Result<Record, ParseError> {
+    if doc.has("DESCRIPTOR") {
+        return Ok(Record::Descriptor);
+    }
+    if doc.has("allGroups") {
+        return Ok(Record::AllGroups);
+    }
+    if doc.has("rootGroups") {
+        return Ok(Record::RootGroups);
+    }
+    if let Some(raw) = doc.find("u") {
+        return Ok(Record::ArtifactAdd(parse_uinfo(raw)?));
+    }
+    if let Some(raw) = doc.find("del") {
+        return Ok(Record::ArtifactRemove(parse_uinfo(raw)?));
+    }
+    Ok(Record::Unknown)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::field::Field;
+    use crate::domain::flags::FieldFlags;
+
+    fn field(name: &str, value: &str) -> Field {
+        Field {
+            flags: FieldFlags::new(0x07),
+            name: name.to_owned(),
+            value: value.to_owned(),
+        }
+    }
+
+    fn doc(fields: Vec<Field>) -> Document {
+        Document::new(fields)
+    }
+
+    #[test]
+    fn classifies_descriptor() {
+        let d = doc(vec![
+            field("DESCRIPTOR", "NexusIndex"),
+            field("IDXINFO", "..."),
+        ]);
+        assert_eq!(classify(&d).unwrap(), Record::Descriptor);
+    }
+
+    #[test]
+    fn classifies_all_groups() {
+        let d = doc(vec![
+            field("allGroups", "ignored"),
+            field("allGroupsList", "a|b|c"),
+        ]);
+        assert_eq!(classify(&d).unwrap(), Record::AllGroups);
+    }
+
+    #[test]
+    fn classifies_root_groups() {
+        let d = doc(vec![
+            field("rootGroups", "x"),
+            field("rootGroupsList", "a|b"),
+        ]);
+        assert_eq!(classify(&d).unwrap(), Record::RootGroups);
+    }
+
+    #[test]
+    fn classifies_add() {
+        let d = doc(vec![field("u", "org.example|lib|1.0|NA|jar")]);
+        let Record::ArtifactAdd(u) = classify(&d).unwrap() else {
+            panic!("expected Add");
+        };
+        assert_eq!(u.group_id, "org.example");
+    }
+
+    #[test]
+    fn classifies_remove() {
+        let d = doc(vec![field("del", "org.example|lib|1.0|NA|jar")]);
+        let Record::ArtifactRemove(u) = classify(&d).unwrap() else {
+            panic!("expected Remove");
+        };
+        assert_eq!(u.artifact_id, "lib");
+    }
+
+    #[test]
+    fn unknown_when_no_recognisable_field() {
+        let d = doc(vec![field("foo", "bar")]);
+        assert_eq!(classify(&d).unwrap(), Record::Unknown);
+    }
+
+    #[test]
+    fn descriptor_beats_u_field_priority() {
+        let d = doc(vec![field("DESCRIPTOR", "x"), field("u", "a|b|c|NA|jar")]);
+        assert_eq!(classify(&d).unwrap(), Record::Descriptor);
+    }
+
+    #[test]
+    fn all_groups_beats_u_field_priority() {
+        let d = doc(vec![field("allGroups", "x"), field("u", "a|b|c|NA|jar")]);
+        assert_eq!(classify(&d).unwrap(), Record::AllGroups);
+    }
+
+    #[test]
+    fn malformed_uinfo_on_add_bubbles_up() {
+        let d = doc(vec![field("u", "not-enough-pipes")]);
+        assert!(matches!(classify(&d), Err(ParseError::MalformedUinfo(_))));
+    }
+}
