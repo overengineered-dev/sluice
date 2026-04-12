@@ -32,3 +32,12 @@ run-chunk:
 
 run-full:
     cargo run --release -p sluice-cli -- --stats fixtures/full/nexus-maven-repository-index.gz > /tmp/sluice-full.jsonl
+
+setup-bench:
+    ./scripts/setup-java-benchmark.sh
+
+compare input="fixtures/full/nexus-maven-repository-index.gz":
+    ./scripts/compare-correctness.sh {{input}}
+
+bench-java input="fixtures/full/nexus-maven-repository-index.gz":
+    ./scripts/bench-throughput.sh {{input}}

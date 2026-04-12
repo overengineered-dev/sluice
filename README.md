@@ -5,6 +5,8 @@
 [![docs.rs](https://docs.rs/sluice/badge.svg)](https://docs.rs/sluice)
 [![License: Apache-2.0](https://img.shields.io/crates/l/sluice.svg)](LICENSE)
 
+Until now, reading the Maven Central index required the JVM, a custom script wiring up the Java `indexer-reader` library, and patience. Sluice is a single binary that does it 7x faster.
+
 A fast, streaming parser for the [Maven Central Nexus binary index format](https://maven.apache.org/repository/central-index.html), plus a CLI that turns index files into JSON Lines.
 
 For a byte-level specification of the wire format and incremental-update protocol, see [`docs/binary-format.md`](docs/binary-format.md).
@@ -77,6 +79,17 @@ for doc in index {
 ```
 
 Enable the `serde` feature on `sluice` to derive `Serialize` for the domain types.
+
+## Performance
+
+Sluice is **7.4x faster** than the Java [Apache Maven Indexer](https://github.com/apache/maven-indexer) `indexer-reader` on the full Maven Central index (2.8 GB compressed, ~19.7M artifact records):
+
+| Tool | Mean | Relative |
+|:---|---:|---:|
+| sluice (Rust) | 151s | 1.00 |
+| indexer-reader (Java) | 1112s | 7.35 |
+
+Both tools produce identical GAV (groupId, artifactId, version) output across all ~19.7M records. Note that the Java tool does additional work per record (field expansion via `RecordExpander`) that sluice skips by design, so the workloads are not identical — an apples-to-apples comparison would show a smaller gap. See [`docs/benchmark.md`](docs/benchmark.md) for a detailed discussion, methodology, and reproduction steps.
 
 ## Development
 
