@@ -8,6 +8,12 @@ use crate::error::ParseError;
 use super::primitives::{read_mutf8_name, read_mutf8_value, read_u8};
 
 /// Read `field_count` fields and return them as a `Document`.
+///
+/// # Errors
+///
+/// Returns [`ParseError::InvalidFieldCount`] if `field_count` is negative,
+/// or [`ParseError::Io`] / [`ParseError::InvalidMutf8`] if a field cannot
+/// be read or decoded.
 pub fn read_document<R: Read>(r: &mut R, field_count: i32) -> Result<Document, ParseError> {
     let Ok(count) = usize::try_from(field_count) else {
         return Err(ParseError::InvalidFieldCount(field_count));

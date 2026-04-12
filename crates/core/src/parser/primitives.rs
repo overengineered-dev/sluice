@@ -6,24 +6,44 @@ use crate::error::ParseError;
 /// 4-byte length prefixes blowing up the allocator (MINDEXER-28 class bugs).
 const MAX_VALUE_LEN: usize = 256 * 1024 * 1024;
 
+/// Read a single byte.
+///
+/// # Errors
+///
+/// Returns [`ParseError::Io`] on read failure.
 pub fn read_u8<R: Read>(r: &mut R) -> Result<u8, ParseError> {
     let mut buf = [0u8; 1];
     r.read_exact(&mut buf)?;
     Ok(buf[0])
 }
 
+/// Read a big-endian `u16`.
+///
+/// # Errors
+///
+/// Returns [`ParseError::Io`] on read failure.
 pub fn read_u16<R: Read>(r: &mut R) -> Result<u16, ParseError> {
     let mut buf = [0u8; 2];
     r.read_exact(&mut buf)?;
     Ok(u16::from_be_bytes(buf))
 }
 
+/// Read a big-endian `i32`.
+///
+/// # Errors
+///
+/// Returns [`ParseError::Io`] on read failure.
 pub fn read_i32<R: Read>(r: &mut R) -> Result<i32, ParseError> {
     let mut buf = [0u8; 4];
     r.read_exact(&mut buf)?;
     Ok(i32::from_be_bytes(buf))
 }
 
+/// Read a big-endian `i64`.
+///
+/// # Errors
+///
+/// Returns [`ParseError::Io`] on read failure.
 pub fn read_i64<R: Read>(r: &mut R) -> Result<i64, ParseError> {
     let mut buf = [0u8; 8];
     r.read_exact(&mut buf)?;
@@ -32,6 +52,11 @@ pub fn read_i64<R: Read>(r: &mut R) -> Result<i64, ParseError> {
 
 /// Read a Java-`DataInput::readUTF` style string: `u16` length prefix then
 /// `N` bytes of Java Modified UTF-8.
+///
+/// # Errors
+///
+/// Returns [`ParseError::Io`] on read failure or
+/// [`ParseError::InvalidMutf8`] if the bytes are not valid Modified UTF-8.
 pub fn read_mutf8_name<R: Read>(r: &mut R) -> Result<String, ParseError> {
     let len = read_u16(r)? as usize;
     let mut buf = vec![0u8; len];
@@ -42,6 +67,12 @@ pub fn read_mutf8_name<R: Read>(r: &mut R) -> Result<String, ParseError> {
 /// Read the custom Maven-indexer value string: `i32` length prefix then
 /// `N` bytes of Java Modified UTF-8. The writer (MINDEXER-28) widened the
 /// prefix from 2 to 4 bytes so class-name lists can exceed 64 KB.
+///
+/// # Errors
+///
+/// Returns [`ParseError::InvalidValueLength`] if the length is negative or
+/// exceeds the safety cap, [`ParseError::Io`] on read failure, or
+/// [`ParseError::InvalidMutf8`] if decoding fails.
 pub fn read_mutf8_value<R: Read>(r: &mut R) -> Result<String, ParseError> {
     let len_i32 = read_i32(r)?;
     let Ok(len) = usize::try_from(len_i32) else {
@@ -59,9 +90,13 @@ pub fn read_mutf8_value<R: Read>(r: &mut R) -> Result<String, ParseError> {
 ///
 /// Returns:
 /// - `Ok(None)` on clean EOF *before any byte* of the length is consumed.
-/// - `Err(TruncatedDocument)` if 1–3 bytes were consumed then EOF.
-/// - `Err(InvalidFieldCount)` if the decoded value is negative.
-/// - `Ok(Some(n))` otherwise.
+/// - `Ok(Some(n))` on a valid non-negative field count.
+///
+/// # Errors
+///
+/// - [`ParseError::TruncatedDocument`] if 1–3 bytes were consumed then EOF.
+/// - [`ParseError::InvalidFieldCount`] if the decoded value is negative.
+/// - [`ParseError::Io`] on read failure.
 pub fn try_read_field_count<R: Read>(r: &mut R) -> Result<Option<i32>, ParseError> {
     let mut buf = [0u8; 4];
     let mut filled = 0usize;

@@ -6,8 +6,8 @@ use std::time::Instant;
 use anyhow::{Context, Result};
 use clap::Parser;
 use flate2::read::GzDecoder;
-use sluice::{classify, IndexReader, Record, Uinfo};
 use serde::Serialize;
+use sluice::{classify, IndexReader, Record, Uinfo};
 
 /// Parse a Maven Central index file (full or incremental chunk) into JSON
 /// Lines on stdout.

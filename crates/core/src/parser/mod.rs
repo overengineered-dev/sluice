@@ -27,6 +27,11 @@ pub struct IndexReader<R: Read> {
 impl<R: Read> IndexReader<R> {
     /// Read and validate the 9-byte header, returning a parser ready to stream
     /// documents.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseError::UnsupportedVersion`] if the version byte is not
+    /// `0x01`, or [`ParseError::Io`] if the header cannot be read.
     pub fn new(mut inner: R) -> Result<Self, ParseError> {
         let version = read_u8(&mut inner)?;
         if version != 0x01 {

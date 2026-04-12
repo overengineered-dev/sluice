@@ -24,8 +24,11 @@ pub enum Record {
 /// 5. `del` field → `ArtifactRemove(parse_uinfo(del))`
 /// 6. otherwise → `Unknown`
 ///
-/// Returns `Err` only when a UINFO string on an add/remove record fails to
-/// parse; structural documents never fail.
+/// # Errors
+///
+/// Returns [`ParseError::MalformedUinfo`] when an add or remove record
+/// contains a UINFO string that cannot be parsed. Structural documents
+/// (descriptor, group lists) never fail.
 pub fn classify(doc: &Document) -> Result<Record, ParseError> {
     if doc.has("DESCRIPTOR") {
         return Ok(Record::Descriptor);

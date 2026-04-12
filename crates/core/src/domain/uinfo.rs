@@ -18,6 +18,11 @@ pub struct Uinfo {
 }
 
 /// Parse a UINFO string. Accepts either 4- or 5-segment forms.
+///
+/// # Errors
+///
+/// Returns [`ParseError::MalformedUinfo`] if the string has fewer than 4 or
+/// more than 5 pipe-delimited segments, or if any required field is empty.
 pub fn parse_uinfo(raw: &str) -> Result<Uinfo, ParseError> {
     let mut parts = raw.split('|');
     let group_id = parts.next();
