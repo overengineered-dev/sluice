@@ -10,13 +10,14 @@ use sluice::{classify, IndexReader, Record};
 
 fn fixture_path() -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.push("../../fixtures/chunk-latest.gz");
+    p.push("../../fixtures/chunk-sample.gz");
     p
 }
 
 #[test]
 fn parses_committed_chunk() {
-    let file = File::open(fixture_path()).expect("fixture missing; run scripts/fetch-chunk.sh");
+    let file =
+        File::open(fixture_path()).expect("fixture missing; run `cargo run --example gen_fixture`");
     let gz = GzDecoder::new(BufReader::new(file));
     let reader = IndexReader::new(gz).expect("valid header");
 
