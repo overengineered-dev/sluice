@@ -3,10 +3,10 @@ all-features = true
 
 [advisories]
 db-path = "~/.cargo/advisory-db"
-vulnerability = "all"
+vulnerability = "deny"
 unmaintained = "workspace"
-yanked = "workspace"
-notice = "workspace"
+yanked = "warn"
+notice = "warn"
 
 [licenses]
 allow = [
