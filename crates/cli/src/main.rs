@@ -6,14 +6,14 @@ use std::time::Instant;
 use anyhow::{Context, Result};
 use clap::Parser;
 use flate2::read::GzDecoder;
-use maven_index_core::{classify, IndexReader, Record, Uinfo};
+use sluice::{classify, IndexReader, Record, Uinfo};
 use serde::Serialize;
 
 /// Parse a Maven Central index file (full or incremental chunk) into JSON
 /// Lines on stdout.
 #[derive(Debug, Parser)]
 #[command(
-    name = "maven-index-parser",
+    name = "sluice",
     version,
     about = "Stream Maven Central index documents as JSON Lines."
 )]

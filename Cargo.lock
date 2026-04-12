@@ -317,31 +317,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "maven-index-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "flate2",
- "maven-index-core",
- "serde",
- "serde_json",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "maven-index-core"
-version = "0.1.0"
-dependencies = [
- "cesu8",
- "flate2",
- "insta",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -517,6 +492,31 @@ name = "similar"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
+
+[[package]]
+name = "sluice"
+version = "0.1.0"
+dependencies = [
+ "cesu8",
+ "flate2",
+ "insta",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "sluice-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "flate2",
+ "serde",
+ "serde_json",
+ "sluice",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "smallvec"

@@ -22,7 +22,7 @@ fetch-full:
         https://repo1.maven.org/maven2/.index/nexus-maven-repository-index.gz
 
 run-chunk:
-    cargo run --release -p maven-index-cli -- --stats fixtures/chunk-latest.gz
+    cargo run --release -p sluice-cli -- --stats fixtures/chunk-latest.gz
 
 run-full:
-    cargo run --release -p maven-index-cli -- --stats fixtures/full/nexus-maven-repository-index.gz > /tmp/maven-full.jsonl
+    cargo run --release -p sluice-cli -- --stats fixtures/full/nexus-maven-repository-index.gz > /tmp/sluice-full.jsonl

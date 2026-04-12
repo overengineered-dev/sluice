@@ -6,7 +6,7 @@ use std::io::BufReader;
 use std::path::PathBuf;
 
 use flate2::read::GzDecoder;
-use maven_index_core::{classify, IndexReader, Record};
+use sluice::{classify, IndexReader, Record};
 
 fn fixture_path() -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

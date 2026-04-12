@@ -1,20 +1,26 @@
 [package]
-name = "maven-index-cli"
-version = "0.1.0"
+name = "sluice-cli"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "../../README.md"
 description = "CLI that parses Maven Central index chunks into JSON Lines."
 
 [[bin]]
-name = "maven-index-parser"
+name = "sluice"
 path = "src/main.rs"
 
 [lints]
 workspace = true
 
 [dependencies]
-maven-index-core = { path = "../core", features = ["serde"] }
+sluice = { path = "../core", version = "0.1.0", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 flate2 = "1"
 anyhow = "1"

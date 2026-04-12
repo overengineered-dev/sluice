@@ -3,7 +3,7 @@
 
 use std::io::Cursor;
 
-use maven_index_core::{classify, IndexReader, ParseError, Record};
+use sluice::{classify, IndexReader, ParseError, Record};
 
 fn push_name(buf: &mut Vec<u8>, name: &str) {
     let bytes = name.as_bytes();
