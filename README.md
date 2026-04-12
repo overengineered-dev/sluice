@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="sluice logo" width="600">
+</p>
+
 # sluice
 
 [![CI](https://github.com/nicarl/sluice/actions/workflows/ci.yml/badge.svg)](https://github.com/nicarl/sluice/actions/workflows/ci.yml)
