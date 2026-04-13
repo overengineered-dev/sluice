@@ -1,5 +1,5 @@
 use super::document::Document;
-use super::uinfo::{parse_uinfo, Uinfo};
+use super::uinfo::{parse_info_extension, parse_uinfo, Uinfo};
 use crate::error::ParseError;
 
 /// OSINT-level interpretation of an index document.
@@ -40,7 +40,15 @@ pub fn classify(doc: &Document) -> Result<Record, ParseError> {
         return Ok(Record::RootGroups);
     }
     if let Some(raw) = doc.find("u") {
-        return Ok(Record::ArtifactAdd(parse_uinfo(raw)?));
+        let mut uinfo = parse_uinfo(raw)?;
+        // MINDEXER-41: backfill extension from INFO field when UINFO has only
+        // 4 segments (pre-5.x indexes omit the extension segment).
+        if uinfo.extension.is_none() {
+            if let Some(info_raw) = doc.find("i") {
+                uinfo.extension = parse_info_extension(info_raw);
+            }
+        }
+        return Ok(Record::ArtifactAdd(uinfo));
     }
     if let Some(raw) = doc.find("del") {
         return Ok(Record::ArtifactRemove(parse_uinfo(raw)?));
@@ -133,5 +141,38 @@ mod tests {
     fn malformed_uinfo_on_add_bubbles_up() {
         let d = doc(vec![field("u", "not-enough-pipes")]);
         assert!(matches!(classify(&d), Err(ParseError::MalformedUinfo(_))));
+    }
+
+    #[test]
+    fn four_segment_uinfo_backfills_extension_from_info() {
+        let d = doc(vec![
+            field("u", "org.example|lib|1.0|NA"),
+            field("i", "jar|1700000000000|123|0|0|0|jar"),
+        ]);
+        let Record::ArtifactAdd(u) = classify(&d).unwrap() else {
+            panic!("expected ArtifactAdd");
+        };
+        assert_eq!(u.extension.as_deref(), Some("jar"));
+    }
+
+    #[test]
+    fn five_segment_uinfo_ignores_info_extension() {
+        let d = doc(vec![
+            field("u", "org.example|lib|1.0|NA|war"),
+            field("i", "jar|1700000000000|123|0|0|0|jar"),
+        ]);
+        let Record::ArtifactAdd(u) = classify(&d).unwrap() else {
+            panic!("expected ArtifactAdd");
+        };
+        assert_eq!(u.extension.as_deref(), Some("war"));
+    }
+
+    #[test]
+    fn four_segment_uinfo_without_info_stays_none() {
+        let d = doc(vec![field("u", "org.example|lib|1.0|NA")]);
+        let Record::ArtifactAdd(u) = classify(&d).unwrap() else {
+            panic!("expected ArtifactAdd");
+        };
+        assert_eq!(u.extension, None);
     }
 }

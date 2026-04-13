@@ -113,6 +113,56 @@ fn parses_header_and_five_document_stream() {
 }
 
 #[test]
+fn four_segment_uinfo_backfills_extension_from_info() {
+    let mut stream = build_stream(0x01, 1_700_000_000_000);
+
+    // artifact add with 4-segment UINFO (no extension) + INFO field
+    push_document(
+        &mut stream,
+        &[
+            (0x05, "u", "org.example|lib|2.0|NA"),
+            (0x04, "i", "jar|1700000000000|456|1|1|0|jar"),
+            (0x04, "m", "1700000000000"),
+        ],
+    );
+
+    let reader = IndexReader::new(Cursor::new(stream)).unwrap();
+    let docs: Vec<_> = reader.collect::<Result<Vec<_>, _>>().unwrap();
+    assert_eq!(docs.len(), 1);
+
+    let Record::ArtifactAdd(ref uinfo) = classify(&docs[0]).unwrap() else {
+        panic!("expected ArtifactAdd");
+    };
+    assert_eq!(uinfo.group_id, "org.example");
+    assert_eq!(uinfo.version, "2.0");
+    assert_eq!(uinfo.classifier, None);
+    assert_eq!(uinfo.extension.as_deref(), Some("jar"));
+}
+
+#[test]
+fn five_segment_uinfo_ignores_info_extension() {
+    let mut stream = build_stream(0x01, 1_700_000_000_000);
+
+    // artifact add with 5-segment UINFO (extension=war) + INFO field (extension=jar)
+    push_document(
+        &mut stream,
+        &[
+            (0x05, "u", "org.example|webapp|1.0|NA|war"),
+            (0x04, "i", "war|1700000000000|789|0|0|0|jar"),
+        ],
+    );
+
+    let reader = IndexReader::new(Cursor::new(stream)).unwrap();
+    let docs: Vec<_> = reader.collect::<Result<Vec<_>, _>>().unwrap();
+
+    let Record::ArtifactAdd(ref uinfo) = classify(&docs[0]).unwrap() else {
+        panic!("expected ArtifactAdd");
+    };
+    // UINFO extension takes precedence over INFO
+    assert_eq!(uinfo.extension.as_deref(), Some("war"));
+}
+
+#[test]
 fn timestamp_negative_one_maps_to_none() {
     let stream = build_stream(0x01, -1);
     let reader = IndexReader::new(Cursor::new(stream)).unwrap();

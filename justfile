@@ -30,8 +30,14 @@ fetch-full:
 run-chunk:
     cargo run --release -p sluice-cli -- --stats fixtures/chunk-latest.gz
 
+run-chunk-full:
+    cargo run --release -p sluice-cli -- --full --stats fixtures/chunk-latest.gz
+
 run-full:
     cargo run --release -p sluice-cli -- --stats fixtures/full/nexus-maven-repository-index.gz > /tmp/sluice-full.jsonl
+
+run-full-full:
+    cargo run --release -p sluice-cli -- --full --stats fixtures/full/nexus-maven-repository-index.gz > /tmp/sluice-full-all.jsonl
 
 setup-bench:
     ./scripts/setup-java-benchmark.sh

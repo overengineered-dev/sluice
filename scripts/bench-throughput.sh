@@ -45,6 +45,8 @@ hyperfine \
     --export-markdown /tmp/bench-results.md \
     --command-name "sluice (Rust)" \
     "${SLUICE} ${INPUT} > /dev/null" \
+    --command-name "sluice --full (Rust)" \
+    "${SLUICE} --full ${INPUT} > /dev/null" \
     --command-name "indexer-reader (Java)" \
     "java -Xmx4g -cp ${JAVA_DIR}:${JAVA_DIR}/lib/* DumpIndex ${INPUT} > /dev/null"
 

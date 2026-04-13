@@ -9,7 +9,7 @@
 [![docs.rs](https://docs.rs/sluice/badge.svg)](https://docs.rs/sluice)
 [![License: Apache-2.0](https://img.shields.io/crates/l/sluice.svg)](LICENSE)
 
-Until now, reading the Maven Central index required the JVM, a custom script wiring up the Java `indexer-reader` library, and patience. Sluice is a single binary that does it 7x faster.
+Until now, reading the Maven Central index required the JVM, a custom script wiring up the Java `indexer-reader` library, and patience. Sluice is a single binary that does it 5x faster.
 
 A fast, streaming parser for the [Maven Central Nexus binary index format](https://maven.apache.org/repository/central-index.html), plus a CLI that turns index files into JSON Lines.
 
@@ -50,6 +50,7 @@ sluice [OPTIONS] [INPUT]
 
 - `INPUT` — path to a gzipped Maven index file. Reads from stdin if omitted.
 - `--include-removes` — also emit `ArtifactRemove` records (`type="remove"`) alongside adds.
+- `--full` — emit all records including classified artifacts (sources, javadoc, etc.) with their classifier and extension. By default, only root-level artifacts (classifier=NA) are emitted.
 - `--stats` — print summary stats to stderr at end of run.
 
 Output is one JSON object per line, e.g.:
@@ -58,7 +59,15 @@ Output is one JSON object per line, e.g.:
 {"type":"add","group_id":"org.example","artifact_id":"lib","version":"1.0","extension":"jar"}
 ```
 
-Records whose classifier is anything other than `NA` are filtered out.
+With `--full`, classified artifacts are included and the `classifier` field appears:
+
+```json
+{"type":"add","group_id":"org.example","artifact_id":"lib","version":"1.0","extension":"jar"}
+{"type":"add","group_id":"org.example","artifact_id":"lib","version":"1.0","classifier":"sources","extension":"jar"}
+{"type":"add","group_id":"org.example","artifact_id":"lib","version":"1.0","classifier":"javadoc","extension":"jar"}
+```
+
+By default, records whose classifier is anything other than `NA` are filtered out. Use `--full` to include all records.
 
 ## Library usage
 
@@ -86,14 +95,15 @@ Enable the `serde` feature on `sluice` to derive `Serialize` for the domain type
 
 ## Performance
 
-Sluice is **7.4x faster** than the Java [Apache Maven Indexer](https://github.com/apache/maven-indexer) `indexer-reader` on the full Maven Central index (2.8 GB compressed, ~19.7M artifact records):
+Sluice is **~5x faster** than the Java [Apache Maven Indexer](https://github.com/apache/maven-indexer) `indexer-reader` on the full Maven Central index (2.8 GB compressed, ~97M documents):
 
 | Tool | Mean | Relative |
 |:---|---:|---:|
-| sluice (Rust) | 151s | 1.00 |
-| indexer-reader (Java) | 1112s | 7.35 |
+| sluice (Rust) | 225s | 1.00 |
+| sluice --full (Rust) | 208s | 1.08 |
+| indexer-reader (Java) | 1112s | 5.35 |
 
-Both tools produce identical GAV (groupId, artifactId, version) output across all ~19.7M records. Note that the Java tool does additional work per record (field expansion via `RecordExpander`) that sluice skips by design, so the workloads are not identical — an apples-to-apples comparison would show a smaller gap. See [`docs/benchmark.md`](docs/benchmark.md) for a detailed discussion, methodology, and reproduction steps.
+Both tools produce identical GAV (groupId, artifactId, version) output across all ~19.7M classifier=NA records, and identical GAV + classifier output across all ~97M records (`--full` mode). Note that the Java tool does additional work per record (field expansion via `RecordExpander`) that sluice largely skips, so the workloads are not identical — an apples-to-apples comparison would show a smaller gap. See [`docs/benchmark.md`](docs/benchmark.md) for a detailed discussion, methodology, and reproduction steps.
 
 ## Development
 

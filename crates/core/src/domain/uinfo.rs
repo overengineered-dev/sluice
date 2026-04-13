@@ -63,6 +63,18 @@ pub fn parse_uinfo(raw: &str) -> Result<Uinfo, ParseError> {
     })
 }
 
+/// Extract the extension (7th component) from an INFO field value.
+///
+/// INFO format: `packaging|lastModified|size|sourcesExists|javadocExists|signatureExists|extension`.
+/// Older indexes may have only 6 components (no extension); returns `None` in
+/// that case.
+pub fn parse_info_extension(info: &str) -> Option<String> {
+    info.split('|')
+        .nth(6)
+        .filter(|s| !s.is_empty())
+        .map(ToOwned::to_owned)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,5 +133,36 @@ mod tests {
             parse_uinfo("|b|c|NA|jar"),
             Err(ParseError::MalformedUinfo(_))
         ));
+    }
+
+    #[test]
+    fn info_extension_seven_components() {
+        assert_eq!(
+            parse_info_extension("jar|1700000000000|123|0|0|0|jar"),
+            Some("jar".to_owned())
+        );
+    }
+
+    #[test]
+    fn info_extension_war() {
+        assert_eq!(
+            parse_info_extension("war|1700000000000|456|1|1|0|war"),
+            Some("war".to_owned())
+        );
+    }
+
+    #[test]
+    fn info_extension_six_components_returns_none() {
+        assert_eq!(parse_info_extension("jar|1700000000000|123|0|0|0"), None);
+    }
+
+    #[test]
+    fn info_extension_empty_seventh_returns_none() {
+        assert_eq!(parse_info_extension("jar|1700000000000|123|0|0|0|"), None);
+    }
+
+    #[test]
+    fn info_extension_empty_string_returns_none() {
+        assert_eq!(parse_info_extension(""), None);
     }
 }

@@ -25,6 +25,11 @@ struct Args {
     #[arg(long)]
     include_removes: bool,
 
+    /// Emit all records including classified artifacts (sources, javadoc, etc.)
+    /// with their classifier and extension. Default: only classifier=NA records.
+    #[arg(long)]
+    full: bool,
+
     /// Print summary stats to stderr at end of run.
     #[arg(long)]
     stats: bool,
@@ -37,12 +42,16 @@ enum OutputRecord<'a> {
         group_id: &'a str,
         artifact_id: &'a str,
         version: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        classifier: Option<&'a str>,
         extension: Option<&'a str>,
     },
     Remove {
         group_id: &'a str,
         artifact_id: &'a str,
         version: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        classifier: Option<&'a str>,
         extension: Option<&'a str>,
     },
 }
@@ -74,6 +83,33 @@ impl Stats {
                 u.extension.as_deref().unwrap_or("-"),
             ));
         }
+    }
+
+    fn print_summary(&self, elapsed: std::time::Duration) -> Result<()> {
+        let mut err = io::stderr().lock();
+        writeln!(
+            err,
+            "parsed {} documents in {}ms",
+            self.total,
+            elapsed.as_millis()
+        )?;
+        writeln!(err, "  adds:       {}", self.adds)?;
+        writeln!(err, "  removes:    {}", self.removes)?;
+        writeln!(err, "  descriptor: {}", self.descriptor)?;
+        writeln!(err, "  allGroups:  {}", self.all_groups)?;
+        writeln!(err, "  rootGroups: {}", self.root_groups)?;
+        writeln!(err, "  unknown:    {}", self.unknown)?;
+        writeln!(
+            err,
+            "emitted {} records (filtered {} by classifier != NA)",
+            self.emitted, self.filtered_classifier
+        )?;
+        writeln!(err, "errors: {}", self.errors)?;
+        writeln!(err, "first 10 UINFO (adds):")?;
+        for line in &self.first_uinfo_adds {
+            writeln!(err, "  {line}")?;
+        }
+        Ok(())
     }
 }
 
@@ -123,13 +159,14 @@ fn main() -> Result<()> {
             Record::ArtifactAdd(u) => {
                 stats.adds += 1;
                 stats.record_add(&u);
-                if u.classifier.is_some() {
+                if !args.full && u.classifier.is_some() {
                     stats.filtered_classifier += 1;
                 } else {
                     let rec = OutputRecord::Add {
                         group_id: &u.group_id,
                         artifact_id: &u.artifact_id,
                         version: &u.version,
+                        classifier: u.classifier.as_deref(),
                         extension: u.extension.as_deref(),
                     };
                     serde_json::to_writer(&mut stdout, &rec)?;
@@ -139,13 +176,14 @@ fn main() -> Result<()> {
             }
             Record::ArtifactRemove(u) => {
                 stats.removes += 1;
-                if u.classifier.is_some() {
+                if !args.full && u.classifier.is_some() {
                     stats.filtered_classifier += 1;
                 } else if args.include_removes {
                     let rec = OutputRecord::Remove {
                         group_id: &u.group_id,
                         artifact_id: &u.artifact_id,
                         version: &u.version,
+                        classifier: u.classifier.as_deref(),
                         extension: u.extension.as_deref(),
                     };
                     serde_json::to_writer(&mut stdout, &rec)?;
@@ -159,29 +197,7 @@ fn main() -> Result<()> {
     let elapsed = start.elapsed();
 
     if args.stats {
-        let mut err = io::stderr().lock();
-        writeln!(
-            err,
-            "parsed {} documents in {}ms",
-            stats.total,
-            elapsed.as_millis()
-        )?;
-        writeln!(err, "  adds:       {}", stats.adds)?;
-        writeln!(err, "  removes:    {}", stats.removes)?;
-        writeln!(err, "  descriptor: {}", stats.descriptor)?;
-        writeln!(err, "  allGroups:  {}", stats.all_groups)?;
-        writeln!(err, "  rootGroups: {}", stats.root_groups)?;
-        writeln!(err, "  unknown:    {}", stats.unknown)?;
-        writeln!(
-            err,
-            "emitted {} records (filtered {} by classifier != NA)",
-            stats.emitted, stats.filtered_classifier
-        )?;
-        writeln!(err, "errors: {}", stats.errors)?;
-        writeln!(err, "first 10 UINFO (adds):")?;
-        for line in &stats.first_uinfo_adds {
-            writeln!(err, "  {line}")?;
-        }
+        stats.print_summary(elapsed)?;
     }
 
     Ok(())
