@@ -96,8 +96,8 @@ classifier=NA):
 
 | Tool | Mean | Min | Max | Relative |
 |:---|---:|---:|---:|---:|
-| sluice (Rust) | 224.9s ± 30.3s | 197.0s | 257.2s | 1.00 |
-| sluice --full (Rust) | 208.1s ± 6.8s | 200.8s | 214.3s | 1.08 |
+| sluice --full (Rust) | 208.1s ± 6.8s | 200.8s | 214.3s | 1.00 |
+| sluice (Rust) | 224.9s ± 30.3s | 197.0s | 257.2s | 1.08 |
 | indexer-reader (Java) | 1112.1s ± 109.7s | 1033.7s | 1237.5s | 5.35\* |
 
 Sluice processes the full index in ~3.5 minutes vs ~18.5 minutes for Java.

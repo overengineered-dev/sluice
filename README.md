@@ -13,7 +13,7 @@ Until now, reading the Maven Central index required the JVM, a custom script wir
 
 A fast, streaming parser for the [Maven Central Nexus binary index format](https://maven.apache.org/repository/central-index.html), plus a CLI that turns index files into JSON Lines.
 
-For a byte-level specification of the wire format and incremental-update protocol, see [`docs/binary-format.md`](docs/binary-format.md).
+For a byte-level specification of the wire format, see [`docs/binary-format.md`](docs/binary-format.md). For the incremental-update protocol, see [`docs/incremental-updates.md`](docs/incremental-updates.md).
 
 ## Layout
 
@@ -23,6 +23,8 @@ This is a Cargo workspace with two crates:
 - **`crates/cli`** — `sluice-cli`, which builds the `sluice` binary. Handles gzip decoding, argument parsing, and JSON Lines output on stdout.
 
 ## Quick start
+
+You need a Rust toolchain (pinned in `rust-toolchain.toml`) and the [`just`](https://github.com/casey/just) task runner.
 
 ```bash
 # Fetch the latest incremental chunk into fixtures/chunk-latest.gz
@@ -71,6 +73,14 @@ By default, records whose classifier is anything other than `NA` are filtered ou
 
 ## Library usage
 
+The core library is I/O-neutral — it reads from any `std::io::Read`. For gzipped index files, bring your own decompressor (e.g. `flate2`):
+
+```toml
+[dependencies]
+sluice = "0.1"
+flate2 = "1"
+```
+
 ```rust
 use std::fs::File;
 use std::io::BufReader;
@@ -91,7 +101,28 @@ for doc in index {
 }
 ```
 
-Enable the `serde` feature on `sluice` to derive `Serialize` for the domain types.
+### Serde support
+
+Enable the `serde` feature to derive `Serialize` on all domain types (`Record`, `Uinfo`, `Document`, etc.):
+
+```toml
+[dependencies]
+sluice = { version = "0.1", features = ["serde"] }
+serde_json = "1"
+```
+
+```rust
+use sluice::{classify, IndexReader, Record};
+
+// ... set up IndexReader as above ...
+
+for doc in index {
+    let doc = doc?;
+    if let Record::ArtifactAdd(ref uinfo) = classify(&doc)? {
+        println!("{}", serde_json::to_string(uinfo)?);
+    }
+}
+```
 
 ## Performance
 
@@ -99,11 +130,10 @@ Sluice is **~5x faster** than the Java [Apache Maven Indexer](https://github.com
 
 | Tool | Mean | Relative |
 |:---|---:|---:|
-| sluice (Rust) | 225s | 1.00 |
-| sluice --full (Rust) | 208s | 1.08 |
+| sluice (Rust) | 208s | 1.00 |
 | indexer-reader (Java) | 1112s | 5.35 |
 
-Both tools produce identical GAV (groupId, artifactId, version) output across all ~19.7M classifier=NA records, and identical GAV + classifier output across all ~97M records (`--full` mode). Note that the Java tool does additional work per record (field expansion via `RecordExpander`) that sluice largely skips, so the workloads are not identical — an apples-to-apples comparison would show a smaller gap. See [`docs/benchmark.md`](docs/benchmark.md) for a detailed discussion, methodology, and reproduction steps.
+Both tools produce identical output across all ~97M records. The Java tool does additional per-record work (field expansion via `RecordExpander`) that sluice skips, so the workloads are not identical. See [`docs/benchmark.md`](docs/benchmark.md) for methodology, reproduction steps, and a detailed discussion.
 
 ## Development
 

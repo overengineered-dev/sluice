@@ -228,6 +228,8 @@ https://repo1.maven.org/maven2/.index/nexus-maven-repository-index.{N}.gz.sha1
 https://repo1.maven.org/maven2/.index/nexus-maven-repository-index.{N}.gz.md5
 ```
 
+For a comprehensive guide to the distribution layout, consumer protocol, and failure modes, see [`incremental-updates.md`](incremental-updates.md).
+
 ## 10. Summary
 
 The transport format is a compact, self-framing binary protocol with exactly one version ever shipped (`0x01`). The core parsing loop is: read a 9-byte header, then repeatedly read documents (4-byte field count + N fields of `flags + name + value`) until EOF. The two non-obvious hazards are the **asymmetric length prefixes** (2-byte for names, 4-byte for values) and **Java Modified UTF-8** encoding. For incremental sync, the protocol is chain-id gated: match the chain, compute which sequential chunks are missing from the `.properties` file, download and merge them in order, and distinguish adds from deletes by the presence of `u` versus `del`.

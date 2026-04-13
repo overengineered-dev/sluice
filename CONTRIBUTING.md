@@ -42,7 +42,3 @@ Open a [GitHub issue](https://github.com/nicarl/sluice/issues) with:
 - What actually happened
 - Steps to reproduce
 - Your Rust version (`rustc --version`)
-
-## Code of Conduct
-
-This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). Please be kind.
