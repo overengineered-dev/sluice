@@ -244,5 +244,5 @@ As of the commit this document was written against:
 
 - [`binary-format.md`](binary-format.md) — byte-level format of the `.gz` files.
 - Apache Maven Indexer source — `IndexDataReader.java`, `IndexDataWriter.java`, `indexer-reader` module. These are the upstream authorities on the format.
-- `crates/core/src/domain/record.rs` — this project's `classify()` function, mirroring the upstream `Record.Type` enum.
+- `crates/core/src/domain/record.rs` — this project's `Record::try_from(&Document)` impl, mirroring the upstream `Record.Type` enum.
 - `scripts/fetch-chunk.sh` — downloads the latest incremental chunk by parsing `last-incremental` from `.properties`.

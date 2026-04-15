@@ -3,7 +3,7 @@
 
 use std::io::Cursor;
 
-use sluice::{classify, IndexReader, ParseError, Record};
+use sluice::{IndexReader, ParseError, Record};
 
 fn push_name(buf: &mut Vec<u8>, name: &str) {
     let bytes = name.as_bytes();
@@ -91,7 +91,7 @@ fn parses_header_and_five_document_stream() {
     let docs: Vec<_> = reader.collect::<Result<Vec<_>, _>>().unwrap();
     assert_eq!(docs.len(), 5);
 
-    let records: Vec<Record> = docs.iter().map(|d| classify(d).unwrap()).collect();
+    let records: Vec<Record> = docs.iter().map(|d| Record::try_from(d).unwrap()).collect();
     assert!(matches!(records[0], Record::Descriptor));
     assert!(matches!(records[1], Record::AllGroups));
     assert!(matches!(records[2], Record::RootGroups));
@@ -130,7 +130,7 @@ fn four_segment_uinfo_backfills_extension_from_info() {
     let docs: Vec<_> = reader.collect::<Result<Vec<_>, _>>().unwrap();
     assert_eq!(docs.len(), 1);
 
-    let Record::ArtifactAdd(ref uinfo) = classify(&docs[0]).unwrap() else {
+    let Record::ArtifactAdd(ref uinfo) = Record::try_from(&docs[0]).unwrap() else {
         panic!("expected ArtifactAdd");
     };
     assert_eq!(uinfo.group_id, "org.example");
@@ -155,11 +155,21 @@ fn five_segment_uinfo_ignores_info_extension() {
     let reader = IndexReader::new(Cursor::new(stream)).unwrap();
     let docs: Vec<_> = reader.collect::<Result<Vec<_>, _>>().unwrap();
 
-    let Record::ArtifactAdd(ref uinfo) = classify(&docs[0]).unwrap() else {
+    let Record::ArtifactAdd(ref uinfo) = Record::try_from(&docs[0]).unwrap() else {
         panic!("expected ArtifactAdd");
     };
     // UINFO extension takes precedence over INFO
     assert_eq!(uinfo.extension.as_deref(), Some("war"));
+}
+
+#[test]
+fn index_reader_debug_includes_header() {
+    let stream = build_stream(0x01, 1_700_000_000_000);
+    let reader = IndexReader::new(Cursor::new(stream)).unwrap();
+    let debug = format!("{reader:?}");
+    assert!(debug.contains("IndexReader"));
+    assert!(debug.contains("header"));
+    assert!(debug.contains("1700000000000"));
 }
 
 #[test]
@@ -216,5 +226,5 @@ fn document_with_zero_fields_is_legal() {
     let reader = IndexReader::new(Cursor::new(stream)).unwrap();
     let docs: Vec<_> = reader.collect::<Result<Vec<_>, _>>().unwrap();
     assert_eq!(docs.len(), 1);
-    assert!(docs[0].fields.is_empty());
+    assert!(docs[0].fields().is_empty());
 }

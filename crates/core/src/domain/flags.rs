@@ -1,7 +1,7 @@
 /// Bitfield describing how a field is stored/indexed in the index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct FieldFlags(pub u8);
+pub struct FieldFlags(u8);
 
 impl FieldFlags {
     pub const INDEXED: u8 = 0x01;

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use criterion::{criterion_group, criterion_main, Criterion, Throughput};
 use flate2::read::GzDecoder;
-use sluice::{classify, IndexReader};
+use sluice::{IndexReader, Record};
 
 fn fixture_bytes() -> Vec<u8> {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -45,7 +45,7 @@ fn bench_parse_raw(c: &mut Criterion) {
             let mut adds = 0u64;
             for doc in reader {
                 let doc = doc.expect("parse ok");
-                if let Ok(sluice::Record::ArtifactAdd(_)) = classify(&doc) {
+                if let Ok(Record::ArtifactAdd(_)) = Record::try_from(&doc) {
                     adds += 1;
                 }
             }

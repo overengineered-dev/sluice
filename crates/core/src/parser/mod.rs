@@ -1,11 +1,12 @@
+use std::fmt;
 use std::io::Read;
 
 use crate::domain::document::Document;
 use crate::domain::header::IndexHeader;
 use crate::error::ParseError;
 
-pub mod document;
-pub mod primitives;
+pub(crate) mod document;
+pub(crate) mod primitives;
 
 use document::read_document;
 use primitives::{read_i64, read_u8, try_read_field_count};
@@ -51,6 +52,14 @@ impl<R: Read> IndexReader<R> {
     #[must_use]
     pub fn header(&self) -> &IndexHeader {
         &self.header
+    }
+}
+
+impl<R: Read> fmt::Debug for IndexReader<R> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("IndexReader")
+            .field("header", &self.header)
+            .finish_non_exhaustive()
     }
 }
 

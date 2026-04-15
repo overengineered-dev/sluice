@@ -6,7 +6,7 @@ use std::io::BufReader;
 use std::path::PathBuf;
 
 use flate2::read::GzDecoder;
-use sluice::{classify, IndexReader, Record};
+use sluice::{IndexReader, Record};
 
 fn fixture_path() -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -41,7 +41,8 @@ fn parses_committed_chunk() {
         let doc = doc.expect("no mid-stream parse errors");
         total += 1;
 
-        match classify(&doc).expect("classification is infallible for well-formed fixtures") {
+        match Record::try_from(&doc).expect("classification is infallible for well-formed fixtures")
+        {
             Record::Descriptor => descriptor += 1,
             Record::AllGroups => all_groups += 1,
             Record::RootGroups => root_groups += 1,
@@ -69,7 +70,8 @@ fn parses_committed_chunk() {
                 assert!(!u.artifact_id.is_empty());
                 assert!(!u.version.is_empty());
             }
-            Record::Unknown => unknown += 1,
+            // `Record::Unknown` plus any future non-exhaustive variants.
+            _ => unknown += 1,
         }
     }
 

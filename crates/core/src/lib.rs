@@ -10,7 +10,7 @@
 //!
 //! ```
 //! use std::io::Cursor;
-//! use sluice::{classify, IndexReader, Record};
+//! use sluice::{IndexReader, Record};
 //!
 //! // A minimal binary stream: version 0x01, timestamp, then one artifact-add document.
 //! let mut stream = Vec::new();
@@ -44,7 +44,7 @@
 //!
 //! for doc in reader {
 //!     let doc = doc?;
-//!     match classify(&doc)? {
+//!     match Record::try_from(&doc)? {
 //!         Record::ArtifactAdd(u) => {
 //!             assert_eq!(u.group_id, "org.example");
 //!             assert_eq!(u.artifact_id, "mylib");
@@ -60,11 +60,7 @@ pub mod error;
 pub mod parser;
 
 pub use domain::{
-    document::Document,
-    field::Field,
-    flags::FieldFlags,
-    header::IndexHeader,
-    record::{classify, Record},
+    document::Document, field::Field, flags::FieldFlags, header::IndexHeader, record::Record,
     uinfo::Uinfo,
 };
 pub use error::ParseError;

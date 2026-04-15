@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::error::ParseError;
 
 /// Maven artifact coordinates decoded from a UINFO string.
@@ -9,12 +11,33 @@ use crate::error::ParseError;
 /// is therefore also `Option`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[non_exhaustive]
 pub struct Uinfo {
     pub group_id: String,
     pub artifact_id: String,
     pub version: String,
     pub classifier: Option<String>,
     pub extension: Option<String>,
+}
+
+impl fmt::Display for Uinfo {
+    /// Format as Maven coordinate notation:
+    /// `groupId:artifactId:version[:classifier][:extension]`.
+    /// Omitted optional segments are skipped entirely (no trailing colons).
+    ///
+    /// Note: this is **not** the on-wire UINFO format (which is `|`-delimited
+    /// with `NA` sentinels). It cannot be round-tripped through
+    /// [`parse_uinfo`]; use that function with the `|`-delimited wire form.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.group_id, self.artifact_id, self.version)?;
+        if let Some(ref c) = self.classifier {
+            write!(f, ":{c}")?;
+        }
+        if let Some(ref e) = self.extension {
+            write!(f, ":{e}")?;
+        }
+        Ok(())
+    }
 }
 
 /// Parse a UINFO string. Accepts either 4- or 5-segment forms.
@@ -164,5 +187,29 @@ mod tests {
     #[test]
     fn info_extension_empty_string_returns_none() {
         assert_eq!(parse_info_extension(""), None);
+    }
+
+    #[test]
+    fn display_full_coordinate() {
+        let u = parse_uinfo("org.example|lib|1.0|sources|jar").unwrap();
+        assert_eq!(u.to_string(), "org.example:lib:1.0:sources:jar");
+    }
+
+    #[test]
+    fn display_no_classifier() {
+        let u = parse_uinfo("org.example|lib|1.0|NA|jar").unwrap();
+        assert_eq!(u.to_string(), "org.example:lib:1.0:jar");
+    }
+
+    #[test]
+    fn display_no_classifier_no_extension() {
+        let u = parse_uinfo("org.example|lib|1.0|NA").unwrap();
+        assert_eq!(u.to_string(), "org.example:lib:1.0");
+    }
+
+    #[test]
+    fn display_classifier_no_extension() {
+        let u = parse_uinfo("org.example|lib|1.0|sources").unwrap();
+        assert_eq!(u.to_string(), "org.example:lib:1.0:sources");
     }
 }

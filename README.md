@@ -85,7 +85,7 @@ flate2 = "1"
 use std::fs::File;
 use std::io::BufReader;
 use flate2::read::GzDecoder;
-use sluice::{classify, IndexReader, Record};
+use sluice::{IndexReader, Record};
 
 let file = File::open("fixtures/chunk-latest.gz")?;
 let gz = GzDecoder::new(BufReader::new(file));
@@ -93,10 +93,13 @@ let index = IndexReader::new(BufReader::new(gz))?;
 
 for doc in index {
     let doc = doc?;
-    match classify(&doc)? {
-        Record::ArtifactAdd(u) => println!("add {}:{}:{}", u.group_id, u.artifact_id, u.version),
-        Record::ArtifactRemove(u) => println!("del {}:{}:{}", u.group_id, u.artifact_id, u.version),
-        Record::Descriptor | Record::AllGroups | Record::RootGroups | Record::Unknown => {}
+    // `Uinfo` implements `Display` as `groupId:artifactId:version[:classifier][:extension]`.
+    match Record::try_from(&doc)? {
+        Record::ArtifactAdd(u) => println!("add {u}"),
+        Record::ArtifactRemove(u) => println!("del {u}"),
+        // `Record` is `#[non_exhaustive]`; match `_` for descriptors, group lists,
+        // and any future variants.
+        _ => {}
     }
 }
 ```
@@ -112,13 +115,13 @@ serde_json = "1"
 ```
 
 ```rust
-use sluice::{classify, IndexReader, Record};
+use sluice::{IndexReader, Record};
 
 // ... set up IndexReader as above ...
 
 for doc in index {
     let doc = doc?;
-    if let Record::ArtifactAdd(ref uinfo) = classify(&doc)? {
+    if let Record::ArtifactAdd(ref uinfo) = Record::try_from(&doc)? {
         println!("{}", serde_json::to_string(uinfo)?);
     }
 }
@@ -144,7 +147,7 @@ just lint        # cargo clippy --all-targets --all-features -- -D warnings
 just test        # cargo test --all
 ```
 
-The Rust toolchain is pinned via `rust-toolchain.toml`. Lints are workspace-wide: `rust_2018_idioms` denied and `clippy::pedantic` at warn level.
+The Rust toolchain is pinned via `rust-toolchain.toml`; the MSRV is **1.85**. Lints are workspace-wide: `rust_2018_idioms` denied and `clippy::pedantic` at warn level.
 
 ### Test fixtures
 

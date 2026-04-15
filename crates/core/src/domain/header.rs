@@ -4,6 +4,7 @@
 /// since the Unix epoch; the on-wire sentinel `-1` is mapped to `None`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[non_exhaustive]
 pub struct IndexHeader {
     pub version: u8,
     pub timestamp_millis: Option<i64>,

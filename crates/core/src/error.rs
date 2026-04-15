@@ -2,6 +2,7 @@ use cesu8::Cesu8DecodingError;
 
 /// All failure modes of the binary index parser.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum ParseError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),

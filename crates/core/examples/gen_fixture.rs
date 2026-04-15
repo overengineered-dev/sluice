@@ -42,25 +42,33 @@ fn write_field(w: &mut impl Write, field: &Field) -> std::io::Result<()> {
 }
 
 fn write_document(w: &mut impl Write, doc: &Document) -> std::io::Result<()> {
-    let field_count = i32::try_from(doc.fields.len()).expect("too many fields");
+    let fields = doc.fields();
+    let field_count = i32::try_from(fields.len()).expect("too many fields");
     w.write_all(&field_count.to_be_bytes())?;
-    for field in &doc.fields {
+    for field in fields {
         write_field(w, field)?;
     }
     Ok(())
 }
 
-fn truncate_large_fields(doc: &mut Document) {
-    for field in &mut doc.fields {
-        if field.value.len() > MAX_VALUE_LEN {
-            // Truncate at a char boundary
-            let mut end = MAX_VALUE_LEN;
-            while end > 0 && !field.value.is_char_boundary(end) {
-                end -= 1;
+fn truncate_large_fields(doc: &Document) -> Document {
+    let fields = doc
+        .fields()
+        .iter()
+        .map(|f| {
+            let mut value = f.value.clone();
+            if value.len() > MAX_VALUE_LEN {
+                // Truncate at a char boundary.
+                let mut end = MAX_VALUE_LEN;
+                while end > 0 && !value.is_char_boundary(end) {
+                    end -= 1;
+                }
+                value.truncate(end);
             }
-            field.value.truncate(end);
-        }
-    }
+            Field::new(f.flags, f.name.clone(), value)
+        })
+        .collect();
+    Document::new(fields)
 }
 
 fn main() {
@@ -92,8 +100,8 @@ fn main() {
         if count >= max_docs {
             break;
         }
-        let mut doc = doc_result.expect("parse error in input");
-        truncate_large_fields(&mut doc);
+        let doc = doc_result.expect("parse error in input");
+        let doc = truncate_large_fields(&doc);
         write_document(&mut writer, &doc).expect("write document");
         count += 1;
     }

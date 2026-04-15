@@ -1,13 +1,16 @@
 use std::fs::File;
-use std::io::{self, BufReader, BufWriter, Read, Write};
-use std::path::PathBuf;
-use std::time::Instant;
+use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use flate2::read::GzDecoder;
 use serde::Serialize;
-use sluice::{classify, IndexReader, Record, Uinfo};
+use sluice::{IndexReader, Record, Uinfo};
+
+/// Number of artifact-add UINFO strings sampled into [`Stats::first_uinfo_adds`].
+const SAMPLE_SIZE: usize = 10;
 
 /// Parse a Maven Central index file (full or incremental chunk) into JSON
 /// Lines on stdout.
@@ -35,25 +38,36 @@ struct Args {
     stats: bool,
 }
 
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum RecordKind {
+    Add,
+    Remove,
+}
+
 #[derive(Serialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-enum OutputRecord<'a> {
-    Add {
-        group_id: &'a str,
-        artifact_id: &'a str,
-        version: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        classifier: Option<&'a str>,
-        extension: Option<&'a str>,
-    },
-    Remove {
-        group_id: &'a str,
-        artifact_id: &'a str,
-        version: &'a str,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        classifier: Option<&'a str>,
-        extension: Option<&'a str>,
-    },
+struct OutputRecord<'a> {
+    #[serde(rename = "type")]
+    kind: RecordKind,
+    group_id: &'a str,
+    artifact_id: &'a str,
+    version: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    classifier: Option<&'a str>,
+    extension: Option<&'a str>,
+}
+
+impl<'a> OutputRecord<'a> {
+    fn from_uinfo(uinfo: &'a Uinfo, kind: RecordKind) -> Self {
+        OutputRecord {
+            kind,
+            group_id: &uinfo.group_id,
+            artifact_id: &uinfo.artifact_id,
+            version: &uinfo.version,
+            classifier: uinfo.classifier.as_deref(),
+            extension: uinfo.extension.as_deref(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -67,13 +81,12 @@ struct Stats {
     unknown: u64,
     emitted: u64,
     filtered_classifier: u64,
-    errors: u64,
     first_uinfo_adds: Vec<String>,
 }
 
 impl Stats {
     fn record_add(&mut self, u: &Uinfo) {
-        if self.first_uinfo_adds.len() < 10 {
+        if self.first_uinfo_adds.len() < SAMPLE_SIZE {
             self.first_uinfo_adds.push(format!(
                 "{} | {} | {} | {} | {}",
                 u.group_id,
@@ -85,7 +98,7 @@ impl Stats {
         }
     }
 
-    fn print_summary(&self, elapsed: std::time::Duration) -> Result<()> {
+    fn print_summary(&self, elapsed: Duration) -> Result<()> {
         let mut err = io::stderr().lock();
         writeln!(
             err,
@@ -104,8 +117,7 @@ impl Stats {
             "emitted {} records (filtered {} by classifier != NA)",
             self.emitted, self.filtered_classifier
         )?;
-        writeln!(err, "errors: {}", self.errors)?;
-        writeln!(err, "first 10 UINFO (adds):")?;
+        writeln!(err, "first {SAMPLE_SIZE} UINFO (adds):")?;
         for line in &self.first_uinfo_adds {
             writeln!(err, "  {line}")?;
         }
@@ -113,92 +125,119 @@ impl Stats {
     }
 }
 
-fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_writer(io::stderr)
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn")),
-        )
-        .init();
-
-    let args = Args::parse();
-
-    let reader: Box<dyn Read> = match args.input.as_ref() {
-        Some(path) => {
-            Box::new(File::open(path).with_context(|| format!("opening {}", path.display()))?)
+/// Open the input file (or stdin) as a buffered reader ready for streaming.
+///
+/// `io::stdin().lock()` already buffers internally, so we hand it back
+/// unwrapped; files are wrapped in a `BufReader` here so callers don't need
+/// to remember to do it themselves.
+fn open_input(path: Option<&Path>) -> Result<Box<dyn BufRead>> {
+    match path {
+        Some(p) => {
+            let file = File::open(p).with_context(|| format!("opening {}", p.display()))?;
+            Ok(Box::new(BufReader::new(file)))
         }
-        None => Box::new(io::stdin().lock()),
-    };
-    let gz = GzDecoder::new(BufReader::new(reader));
-    let buffered = BufReader::new(gz);
-    let index = IndexReader::new(buffered).context("reading index header")?;
+        None => Ok(Box::new(io::stdin().lock())),
+    }
+}
 
-    let stdout = io::stdout().lock();
-    let mut stdout = BufWriter::new(stdout);
-    let mut stats = Stats::default();
+/// Write a JSON Lines record (object + trailing newline).
+fn write_jsonl(out: &mut impl Write, rec: &OutputRecord<'_>) -> Result<()> {
+    serde_json::to_writer(&mut *out, rec)?;
+    out.write_all(b"\n")?;
+    Ok(())
+}
 
-    let start = Instant::now();
+/// Parse the index from `input`, write JSON Lines to `out`, and update `stats`.
+///
+/// `stats` is updated incrementally so the caller can inspect partial progress
+/// even if processing fails partway through.
+fn process<R, W>(input: R, out: &mut W, args: &Args, stats: &mut Stats) -> Result<()>
+where
+    R: Read,
+    W: Write,
+{
+    let index = IndexReader::new(input).context("reading index header")?;
+
     for item in index {
         let doc = item.context("parsing document")?;
         stats.total += 1;
 
-        let record = match classify(&doc) {
-            Ok(r) => r,
-            Err(e) => {
-                stats.errors += 1;
-                return Err(anyhow::Error::from(e).context("classifying document"));
-            }
-        };
+        let record = Record::try_from(&doc).context("classifying document")?;
 
         match record {
             Record::Descriptor => stats.descriptor += 1,
             Record::AllGroups => stats.all_groups += 1,
             Record::RootGroups => stats.root_groups += 1,
-            Record::Unknown => stats.unknown += 1,
-            Record::ArtifactAdd(u) => {
+            Record::ArtifactAdd(ref u) => {
                 stats.adds += 1;
-                stats.record_add(&u);
+                stats.record_add(u);
                 if !args.full && u.classifier.is_some() {
                     stats.filtered_classifier += 1;
                 } else {
-                    let rec = OutputRecord::Add {
-                        group_id: &u.group_id,
-                        artifact_id: &u.artifact_id,
-                        version: &u.version,
-                        classifier: u.classifier.as_deref(),
-                        extension: u.extension.as_deref(),
-                    };
-                    serde_json::to_writer(&mut stdout, &rec)?;
-                    stdout.write_all(b"\n")?;
+                    write_jsonl(out, &OutputRecord::from_uinfo(u, RecordKind::Add))?;
                     stats.emitted += 1;
                 }
             }
-            Record::ArtifactRemove(u) => {
+            Record::ArtifactRemove(ref u) => {
                 stats.removes += 1;
                 if !args.full && u.classifier.is_some() {
                     stats.filtered_classifier += 1;
                 } else if args.include_removes {
-                    let rec = OutputRecord::Remove {
-                        group_id: &u.group_id,
-                        artifact_id: &u.artifact_id,
-                        version: &u.version,
-                        classifier: u.classifier.as_deref(),
-                        extension: u.extension.as_deref(),
-                    };
-                    serde_json::to_writer(&mut stdout, &rec)?;
-                    stdout.write_all(b"\n")?;
+                    write_jsonl(out, &OutputRecord::from_uinfo(u, RecordKind::Remove))?;
                     stats.emitted += 1;
                 }
             }
+            // `Record` is `#[non_exhaustive]`; future variants count as unknown.
+            _ => stats.unknown += 1,
         }
     }
-    stdout.flush()?;
+    out.flush()?;
+    Ok(())
+}
+
+fn init_tracing() {
+    let filter = match std::env::var("RUST_LOG") {
+        Ok(value) => match tracing_subscriber::EnvFilter::try_new(&value) {
+            Ok(f) => f,
+            Err(e) => {
+                // Surface bad RUST_LOG values rather than silently downgrading
+                // to the default — typos here are easy to miss.
+                let _ = writeln!(
+                    io::stderr(),
+                    "warning: ignoring invalid RUST_LOG={value:?}: {e}"
+                );
+                tracing_subscriber::EnvFilter::new("warn")
+            }
+        },
+        Err(_) => tracing_subscriber::EnvFilter::new("warn"),
+    };
+    tracing_subscriber::fmt()
+        .with_writer(io::stderr)
+        .with_env_filter(filter)
+        .init();
+}
+
+fn main() -> Result<()> {
+    init_tracing();
+    let args = Args::parse();
+
+    let input = open_input(args.input.as_deref())?;
+    let gz = GzDecoder::new(input);
+    let buffered = BufReader::new(gz);
+
+    let mut stdout = BufWriter::new(io::stdout().lock());
+    let mut stats = Stats::default();
+    let start = Instant::now();
+    let result = process(buffered, &mut stdout, &args, &mut stats);
     let elapsed = start.elapsed();
 
+    // Print stats even if processing failed, so the user sees the partial
+    // progress recorded up to the failure point. A broken-pipe (or other I/O
+    // error) on stderr while writing stats must not override the real
+    // processing result; we deliberately swallow it here.
     if args.stats {
-        stats.print_summary(elapsed)?;
+        let _ = stats.print_summary(elapsed);
     }
 
-    Ok(())
+    result
 }

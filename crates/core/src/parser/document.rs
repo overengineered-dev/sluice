@@ -64,7 +64,7 @@ mod tests {
     fn zero_field_document() {
         let mut c = Cursor::new(Vec::<u8>::new());
         let d = read_document(&mut c, 0).unwrap();
-        assert!(d.fields.is_empty());
+        assert!(d.fields().is_empty());
     }
 
     #[test]
@@ -73,10 +73,11 @@ mod tests {
         bytes.extend_from_slice(&encode_field(0x07, "u", "org.example|lib|1.0|NA|jar"));
         let mut c = Cursor::new(bytes);
         let d = read_document(&mut c, 1).unwrap();
-        assert_eq!(d.fields.len(), 1);
-        assert_eq!(d.fields[0].name, "u");
-        assert_eq!(d.fields[0].value, "org.example|lib|1.0|NA|jar");
-        assert_eq!(d.fields[0].flags.bits(), 0x07);
+        let fields = d.fields();
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].name, "u");
+        assert_eq!(fields[0].value, "org.example|lib|1.0|NA|jar");
+        assert_eq!(fields[0].flags.bits(), 0x07);
     }
 
     #[test]
@@ -87,10 +88,11 @@ mod tests {
         bytes.extend_from_slice(&encode_field(0x04, "m", "1700000000000"));
         let mut c = Cursor::new(bytes);
         let d = read_document(&mut c, 3).unwrap();
-        assert_eq!(d.fields.len(), 3);
-        assert_eq!(d.fields[0].name, "u");
-        assert_eq!(d.fields[1].name, "i");
-        assert_eq!(d.fields[2].name, "m");
+        let fields = d.fields();
+        assert_eq!(fields.len(), 3);
+        assert_eq!(fields[0].name, "u");
+        assert_eq!(fields[1].name, "i");
+        assert_eq!(fields[2].name, "m");
     }
 
     #[test]

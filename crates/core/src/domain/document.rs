@@ -7,7 +7,7 @@ use super::field::Field;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Document {
-    pub fields: Vec<Field>,
+    fields: Vec<Field>,
 }
 
 impl Document {
@@ -16,6 +16,13 @@ impl Document {
         Self { fields }
     }
 
+    /// All fields in on-wire order.
+    #[must_use]
+    pub fn fields(&self) -> &[Field] {
+        &self.fields
+    }
+
+    /// Return the value of the first field whose name equals `key`.
     #[must_use]
     pub fn find(&self, key: &str) -> Option<&str> {
         self.fields
@@ -24,6 +31,7 @@ impl Document {
             .map(|f| f.value.as_str())
     }
 
+    /// Return `true` if any field's name equals `key`.
     #[must_use]
     pub fn has(&self, key: &str) -> bool {
         self.fields.iter().any(|f| f.name == key)
