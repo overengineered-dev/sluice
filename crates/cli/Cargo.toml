@@ -8,9 +8,10 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
-categories.workspace = true
+categories = ["command-line-utilities", "parser-implementations"]
 readme = "../../README.md"
 description = "CLI that parses Maven Central index chunks into JSON Lines."
+exclude = ["tests/cli.rs"]
 
 [[bin]]
 name = "sluice"
