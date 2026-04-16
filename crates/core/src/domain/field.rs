@@ -5,8 +5,11 @@ use super::flags::FieldFlags;
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[non_exhaustive]
 pub struct Field {
+    /// Storage/indexing flags for this field.
     pub flags: FieldFlags,
+    /// Field name (e.g. `"u"`, `"i"`, `"DESCRIPTOR"`).
     pub name: String,
+    /// Field value, decoded from Java Modified UTF-8.
     pub value: String,
 }
 

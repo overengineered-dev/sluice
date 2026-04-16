@@ -49,6 +49,7 @@ impl<R: Read> IndexReader<R> {
         })
     }
 
+    /// Return the parsed header for this stream.
     #[must_use]
     pub fn header(&self) -> &IndexHeader {
         &self.header

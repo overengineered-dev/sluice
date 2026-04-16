@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - TBD
+
+### Added
 - Initial open-source release.
 - Pure-Rust streaming parser for the Maven Central Nexus binary index format.
 - CLI (`sluice`) that emits artifact records as JSON Lines.

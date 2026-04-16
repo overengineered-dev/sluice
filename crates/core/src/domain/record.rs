@@ -10,11 +10,17 @@ use crate::error::ParseError;
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[non_exhaustive]
 pub enum Record {
+    /// Index descriptor document (header metadata).
     Descriptor,
+    /// `allGroups` index — the full list of group IDs.
     AllGroups,
+    /// `rootGroups` index — top-level group name prefixes.
     RootGroups,
+    /// Artifact add record with parsed coordinates.
     ArtifactAdd(Uinfo),
+    /// Artifact removal record with parsed coordinates.
     ArtifactRemove(Uinfo),
+    /// Document that did not match any known record shape.
     Unknown,
 }
 

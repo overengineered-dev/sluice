@@ -42,14 +42,24 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --all
 
-  msrv:
-    name: MSRV (1.85)
+  msrv-core:
+    name: MSRV core (1.75)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.85
+      - uses: dtolnay/rust-toolchain@1.75.0
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check --all
+      - run: cargo check -p sluice-rs --no-default-features
+      - run: cargo check -p sluice-rs --all-features
+
+  msrv-cli:
+    name: MSRV cli (1.85)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p sluice-cli
 
   doc:
     name: Docs

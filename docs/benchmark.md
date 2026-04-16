@@ -57,8 +57,8 @@ just bench-java
 You can also run on a smaller fixture for a quick smoke test:
 
 ```bash
-just compare input=fixtures/chunk-sample.gz
-just bench-java input=fixtures/chunk-sample.gz
+just compare input=crates/core/tests/fixtures/chunk-sample.gz
+just bench-java input=crates/core/tests/fixtures/chunk-sample.gz
 ```
 
 ## How it works

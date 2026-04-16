@@ -5,9 +5,9 @@
 # sluice
 
 [![CI](https://github.com/nicarl/sluice/actions/workflows/ci.yml/badge.svg)](https://github.com/nicarl/sluice/actions/workflows/ci.yml)
-[![crates.io](https://img.shields.io/crates/v/sluice.svg)](https://crates.io/crates/sluice)
-[![docs.rs](https://docs.rs/sluice/badge.svg)](https://docs.rs/sluice)
-[![License: Apache-2.0](https://img.shields.io/crates/l/sluice.svg)](LICENSE)
+[![crates.io](https://img.shields.io/crates/v/sluice-rs.svg)](https://crates.io/crates/sluice-rs)
+[![docs.rs](https://docs.rs/sluice-rs/badge.svg)](https://docs.rs/sluice-rs)
+[![License: Apache-2.0](https://img.shields.io/crates/l/sluice-rs.svg)](LICENSE)
 
 Until now, reading the Maven Central index required the JVM, a custom script wiring up the Java `indexer-reader` library, and patience. Sluice is a single binary that does it 5x faster.
 
@@ -24,7 +24,7 @@ This is a Cargo workspace with two crates:
 
 ## Quick start
 
-You need a Rust toolchain (pinned in `rust-toolchain.toml`) and the [`just`](https://github.com/casey/just) task runner.
+You need a Rust toolchain (pinned in `rust-toolchain.toml`) and the [`just`](https://github.com/casey/just) task runner (`cargo install just` or `brew install just`).
 
 ```bash
 # Fetch the latest incremental chunk into fixtures/chunk-latest.gz
@@ -73,11 +73,11 @@ By default, records whose classifier is anything other than `NA` are filtered ou
 
 ## Library usage
 
-The core library is I/O-neutral — it reads from any `std::io::Read`. For gzipped index files, bring your own decompressor (e.g. `flate2`):
+The core library is I/O-neutral — it reads from any `std::io::Read`. For gzipped index files, bring your own decompressor (e.g. `flate2`). The crate is published as `sluice-rs` on crates.io; the import path is `sluice`:
 
 ```toml
 [dependencies]
-sluice = "0.1"
+sluice-rs = "0.1"
 flate2 = "1"
 ```
 
@@ -110,7 +110,7 @@ Enable the `serde` feature to derive `Serialize` on all domain types (`Record`, 
 
 ```toml
 [dependencies]
-sluice = { version = "0.1", features = ["serde"] }
+sluice-rs = { version = "0.1", features = ["serde"] }
 serde_json = "1"
 ```
 
@@ -147,11 +147,11 @@ just lint        # cargo clippy --all-targets --all-features -- -D warnings
 just test        # cargo test --all
 ```
 
-The Rust toolchain is pinned via `rust-toolchain.toml`; the MSRV is **1.85**. Lints are workspace-wide: `rust_2018_idioms` denied and `clippy::pedantic` at warn level.
+The Rust toolchain is pinned via `rust-toolchain.toml`. MSRV is **1.75** for the library (`sluice-rs`) and **1.85** for the CLI (`sluice-cli`) — `clap` transitively requires `edition2024`. Lints are workspace-wide: `rust_2018_idioms` denied and `clippy::pedantic` at warn level.
 
 ### Test fixtures
 
-A small sample fixture (`fixtures/chunk-sample.gz`) is committed for offline testing. To regenerate it from a full Maven Central chunk:
+A small sample fixture (`crates/core/tests/fixtures/chunk-sample.gz`) is committed for offline testing. To regenerate it from a full Maven Central chunk:
 
 ```bash
 just fetch-chunk

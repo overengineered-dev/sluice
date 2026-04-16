@@ -13,10 +13,17 @@ use crate::error::ParseError;
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[non_exhaustive]
 pub struct Uinfo {
+    /// Maven `groupId`.
     pub group_id: String,
+    /// Maven `artifactId`.
     pub artifact_id: String,
+    /// Maven `version`.
     pub version: String,
+    /// Maven `classifier` (e.g. `sources`, `javadoc`); `None` when the on-wire
+    /// sentinel `NA` is present.
     pub classifier: Option<String>,
+    /// File extension (e.g. `jar`, `pom`); `None` for pre-5.x 4-segment UINFOs
+    /// when the INFO field is absent or has no extension.
     pub extension: Option<String>,
 }
 

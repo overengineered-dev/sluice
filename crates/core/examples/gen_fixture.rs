@@ -5,7 +5,7 @@
 //! Usage:
 //!
 //! ```sh
-//! cargo run --example gen_fixture -- fixtures/chunk-latest.gz fixtures/chunk-sample.gz [max_docs]
+//! cargo run --example gen_fixture -- fixtures/chunk-latest.gz crates/core/tests/fixtures/chunk-sample.gz [max_docs]
 //! ```
 
 use std::env;

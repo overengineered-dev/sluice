@@ -4,30 +4,38 @@
 pub struct FieldFlags(u8);
 
 impl FieldFlags {
+    /// Bit set when the field is indexed (Lucene-searchable).
     pub const INDEXED: u8 = 0x01;
+    /// Bit set when the field value is tokenized for indexing.
     pub const TOKENIZED: u8 = 0x02;
+    /// Bit set when the field value is stored verbatim alongside the index.
     pub const STORED: u8 = 0x04;
 
+    /// Construct from a raw flags byte.
     #[must_use]
     pub fn new(bits: u8) -> Self {
         Self(bits)
     }
 
+    /// Return the raw flags byte.
     #[must_use]
     pub fn bits(self) -> u8 {
         self.0
     }
 
+    /// `true` when [`Self::INDEXED`] is set.
     #[must_use]
     pub fn is_indexed(self) -> bool {
         self.0 & Self::INDEXED != 0
     }
 
+    /// `true` when [`Self::TOKENIZED`] is set.
     #[must_use]
     pub fn is_tokenized(self) -> bool {
         self.0 & Self::TOKENIZED != 0
     }
 
+    /// `true` when [`Self::STORED`] is set.
     #[must_use]
     pub fn is_stored(self) -> bool {
         self.0 & Self::STORED != 0

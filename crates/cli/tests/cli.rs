@@ -1,6 +1,6 @@
 //! Integration tests for the `sluice` CLI binary.
 //!
-//! Several tests below depend on properties of `fixtures/chunk-sample.gz`:
+//! Several tests below depend on properties of the shared sample fixture:
 //!  - it contains at least one classified artifact (sources/javadoc/etc.),
 //!  - it contains at least one record where `--full` adds output beyond the
 //!    default classifier=NA filter.
@@ -15,7 +15,7 @@ use predicates::prelude::*;
 
 fn fixture_path() -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.push("../../fixtures/chunk-sample.gz");
+    p.push("../core/tests/fixtures/chunk-sample.gz");
     p
 }
 

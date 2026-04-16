@@ -55,8 +55,12 @@
 //! # Ok::<(), sluice::ParseError>(())
 //! ```
 
+#![warn(missing_docs)]
+
 pub mod domain;
+/// Error type for parsing operations.
 pub mod error;
+/// Streaming parser over a binary index stream.
 pub mod parser;
 
 pub use domain::{

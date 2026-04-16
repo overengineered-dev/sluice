@@ -10,7 +10,7 @@ use sluice::{IndexReader, Record};
 
 fn fixture_path() -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.push("../../fixtures/chunk-sample.gz");
+    p.push("tests/fixtures/chunk-sample.gz");
     p
 }
 

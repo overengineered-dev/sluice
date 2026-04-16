@@ -2,7 +2,9 @@
 name = "sluice-cli"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+# Higher than the workspace MSRV: clap 4.5 transitively pulls clap_lex 1.1
+# which requires edition2024 (stabilized in Rust 1.85).
+rust-version = "1.85"
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
@@ -22,13 +24,17 @@ workspace = true
 
 [dependencies]
 sluice = { path = "../core", version = "0.1.0", package = "sluice-rs", features = ["serde"] }
-clap = { version = "4", features = ["derive"] }
+# tilde: see rust-version above — clap 4.6+ bumps the CLI MSRV further.
+clap = { version = "~4.5", features = ["derive"] }
 flate2 = "1"
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
 assert_cmd = "2"

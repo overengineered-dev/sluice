@@ -6,6 +6,9 @@
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[non_exhaustive]
 pub struct IndexHeader {
+    /// Format version byte; currently always `0x01`.
     pub version: u8,
+    /// Index-build timestamp in milliseconds since the Unix epoch; `None` when
+    /// the on-wire sentinel `-1` is present.
     pub timestamp_millis: Option<i64>,
 }

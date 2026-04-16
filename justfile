@@ -20,7 +20,7 @@ fetch-chunk:
     ./scripts/fetch-chunk.sh
 
 regen-fixture:
-    cargo run --example gen_fixture -- fixtures/chunk-latest.gz fixtures/chunk-sample.gz 500
+    cargo run --example gen_fixture -- fixtures/chunk-latest.gz crates/core/tests/fixtures/chunk-sample.gz 500
 
 fetch-full:
     mkdir -p fixtures/full

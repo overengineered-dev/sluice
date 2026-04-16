@@ -54,6 +54,7 @@ struct OutputRecord<'a> {
     version: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     classifier: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     extension: Option<&'a str>,
 }
 
@@ -217,7 +218,24 @@ fn init_tracing() {
         .init();
 }
 
+/// Restore the default SIGPIPE disposition so that `sluice | head` exits
+/// silently instead of surfacing a `BrokenPipe` error. Rust ignores SIGPIPE
+/// by default, turning pipe closures into write errors.
+#[cfg(unix)]
+fn reset_sigpipe() {
+    // SAFETY: `signal(2)` is async-signal-safe and `SIGPIPE`/`SIG_DFL` are
+    // valid POSIX constants. The returned previous handler is intentionally
+    // discarded; we never restore it.
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
+}
+
+#[cfg(not(unix))]
+fn reset_sigpipe() {}
+
 fn main() -> Result<()> {
+    reset_sigpipe();
     init_tracing();
     let args = Args::parse();
 

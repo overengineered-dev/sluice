@@ -8,7 +8,7 @@ use sluice::{IndexReader, Record};
 
 fn fixture_bytes() -> Vec<u8> {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    p.push("../../fixtures/chunk-sample.gz");
+    p.push("tests/fixtures/chunk-sample.gz");
     fs::read(p).expect("fixture missing; run `just regen-fixture`")
 }
 

@@ -11,6 +11,7 @@ pub struct Document {
 }
 
 impl Document {
+    /// Construct a `Document` from an ordered list of fields.
     #[must_use]
     pub fn new(fields: Vec<Field>) -> Self {
         Self { fields }
