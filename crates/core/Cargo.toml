@@ -1,5 +1,5 @@
 [package]
-name = "sluice"
+name = "sluice-rs"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,6 +11,9 @@ keywords.workspace = true
 categories.workspace = true
 readme = "../../README.md"
 description = "Pure-Rust parser for the Maven Central binary index format."
+
+[lib]
+name = "sluice"
 
 [lints]
 workspace = true
