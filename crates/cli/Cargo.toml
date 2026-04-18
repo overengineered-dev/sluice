@@ -1,8 +1,8 @@
 [package]
 name = "sluice-cli"
-# Pinned ahead of the workspace (0.1.1) so release-plz publishes v0.1.2 on
-# the next main push. Drop back to `version.workspace = true` the next time
-# both crates are bumped together.
+# Drifted ahead of the workspace (0.1.1) by Homebrew-pipeline patches that
+# didn't touch sluice-rs. Restore `version.workspace = true` next time both
+# crates bump together.
 version = "0.1.4"
 edition.workspace = true
 # Higher than the workspace MSRV: clap 4.5 transitively pulls clap_lex 1.1
