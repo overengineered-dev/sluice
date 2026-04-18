@@ -22,27 +22,48 @@ This is a Cargo workspace with two crates:
 - **`crates/core`** — `sluice`, the library. I/O-neutral: operates on any `std::io::Read`, with no knowledge of gzip, HTTP, files, or JSON. Parses the Nexus binary header and record stream, decodes fields (including CESU-8 strings), and classifies documents into descriptors, group lists, and artifact add/remove records with parsed `UINFO` tuples.
 - **`crates/cli`** — `sluice-cli`, which builds the `sluice` binary. Handles gzip decoding, argument parsing, and JSON Lines output on stdout.
 
+## Installation
+
+### Homebrew (macOS and Linux)
+
+```bash
+brew install overengineered-dev/tap/sluice
+```
+
+### Cargo
+
+```bash
+cargo install sluice-cli
+```
+
+### Prebuilt archives
+
+Download the archive for your platform from the [latest release](https://github.com/overengineered-dev/sluice/releases/latest), extract, and move `sluice` onto your `PATH`.
+
+### From source
+
+```bash
+git clone https://github.com/overengineered-dev/sluice
+cd sluice
+cargo install --path crates/cli
+```
+
 ## Quick start
 
-You need a Rust toolchain (pinned in `rust-toolchain.toml`) and the [`just`](https://github.com/casey/just) task runner (`cargo install just` or `brew install just`).
-
 ```bash
-# Fetch the latest incremental chunk into fixtures/chunk-latest.gz
-just fetch-chunk
-
-# Parse it and print artifact adds as JSON Lines (with stats on stderr)
-just run-chunk
-
-# Or parse the full Maven Central index (~2.8 GB download, ~minutes to parse)
-just fetch-full
-just run-full
+# Parse a gzipped Maven Central index chunk and print artifact adds as
+# JSON Lines (with stats on stderr).
+sluice --stats chunk-latest.gz
 ```
 
-Under the hood:
+Or stream the full Maven Central index straight from Apache without saving it to disk (~2.8 GB compressed, several minutes to parse):
 
 ```bash
-cargo run --release -p sluice-cli -- --stats fixtures/chunk-latest.gz
+curl -sL https://repo1.maven.org/maven2/.index/nexus-maven-repository-index.gz \
+  | sluice --stats > artifacts.jsonl
 ```
+
+Contributors working from a clone can use the `just` recipes — see [Development](#development) below.
 
 ### CLI options
 
@@ -140,11 +161,17 @@ Both tools produce identical output across all ~97M records. The Java tool does 
 
 ## Development
 
+Recipes are run through [`just`](https://github.com/casey/just) (`cargo install just` or `brew install just`):
+
 ```bash
 just fmt         # cargo fmt --all
 just fmt-check   # cargo fmt --all -- --check
 just lint        # cargo clippy --all-targets --all-features -- -D warnings
 just test        # cargo test --all
+just fetch-chunk # download the latest incremental chunk into fixtures/
+just run-chunk   # parse fixtures/chunk-latest.gz with --stats
+just fetch-full  # download the full Maven Central index (~2.8 GB)
+just run-full    # parse the full index
 ```
 
 The Rust toolchain is pinned via `rust-toolchain.toml`. MSRV is **1.75** for the library (`sluice-rs`) and **1.85** for the CLI (`sluice-cli`) — `clap` transitively requires `edition2024`. Lints are workspace-wide: `rust_2018_idioms` denied and `clippy::pedantic` at warn level.
