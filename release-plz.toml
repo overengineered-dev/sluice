@@ -9,3 +9,11 @@ semver_check = true
 # existing tags (sluice-rs-v0.1.0, sluice-cli-v0.1.0). Listed here for clarity.
 git_tag_name = "{{ package }}-v{{ version }}"
 git_release_name = "{{ package }} v{{ version }}"
+
+# One-off: force a sluice-cli v0.1.2 release to exercise the fixed
+# release-binaries + Homebrew pipeline end-to-end. The only commits since
+# sluice-cli-v0.1.1 live in .github/workflows/, which release-plz would
+# normally ignore for versioning. Remove this block once v0.1.2 is out.
+[[package]]
+name = "sluice-cli"
+release_always = true
