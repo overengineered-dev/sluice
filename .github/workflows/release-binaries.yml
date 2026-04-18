@@ -34,7 +34,11 @@ jobs:
             cross: true
           - target: x86_64-apple-darwin
             os_arch: darwin-amd64
-            os: macos-13
+            # Cross-compiled from arm64 (macos-latest). macos-13 Intel runners
+            # have a much smaller pool and can queue for 30+ min. The Apple
+            # linker on arm64 produces working x86_64 binaries once the
+            # target stdlib is installed via rustup.
+            os: macos-latest
             archive: tar.gz
           - target: aarch64-apple-darwin
             os_arch: darwin-arm64
