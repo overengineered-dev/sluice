@@ -1,6 +1,6 @@
 # Maven Central index binary format
 
-The Maven Central index (`nexus-maven-repository-index.gz` and its incremental chunks) uses a custom binary transport format, not a raw Lucene index. It is documented only in the Apache Maven Indexer source — `IndexDataReader.java`, `IndexDataWriter.java`, and the `indexer-reader` module. This document is a byte-level specification sufficient to implement a parser, distilled from those sources for the benefit of `sluice`.
+This document is a byte-level specification of the Maven Central index binary format (`nexus-maven-repository-index.gz` and its incremental chunks), distilled from the Apache Maven Indexer Java sources: `IndexDataReader.java`, `IndexDataWriter.java`, and the `indexer-reader` module. The format is a custom binary transport, not a raw Lucene index. `sluice` is a Rust implementation against this spec.
 
 ## 1. Framing
 
