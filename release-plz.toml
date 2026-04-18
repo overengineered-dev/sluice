@@ -2,8 +2,6 @@
 # Workspace-level: applies to all packages unless overridden in a [[package]] block.
 
 [workspace]
-# Single shared changelog at repo root (overrides the per-crate default).
-changelog_path = "./CHANGELOG.md"
 # Block accidental SemVer breakage: a non-major bump that breaks the public API
 # fails the release PR.
 semver_check = true
@@ -11,26 +9,3 @@ semver_check = true
 # existing tags (sluice-rs-v0.1.0, sluice-cli-v0.1.0). Listed here for clarity.
 git_tag_name = "{{ package }}-v{{ version }}"
 git_release_name = "{{ package }} v{{ version }}"
-
-[changelog]
-header = """# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-"""
-body = """
-## [{{ package }} v{{ version }}]\
-    {%- if release_link -%}\
-        ({{ release_link }})\
-    {% endif %} \
-    - {{ timestamp | date(format="%Y-%m-%d") }}
-{% for group, commits in commits | group_by(attribute="group") %}
-### {{ group | upper_first }}
-{% for commit in commits %}
-- {{ commit.message | upper_first }}{% if commit.scope %} (`{{ commit.scope }}`){% endif %}\
-{% endfor %}
-{% endfor %}
-"""
-trim = true
