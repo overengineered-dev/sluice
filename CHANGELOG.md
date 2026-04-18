@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - TBD
+## [0.1.0] - 2026-04-18
 
-### Added
-- Initial open-source release.
+### sluice-rs
+
+- Initial release.
 - Pure-Rust streaming parser for the Maven Central Nexus binary index format.
-- CLI (`sluice`) that emits artifact records as JSON Lines.
 - CESU-8 / Modified UTF-8 string decoding via the `cesu8` crate.
 - Document classification: descriptor, all-groups, root-groups, artifact add/remove.
 - UINFO tuple parsing with 4-segment and 5-segment support.
 - Optional `serde` feature for `Serialize` derives on domain types.
+
+### sluice-cli
+
+- Initial release.
+- `sluice` binary that emits artifact records as JSON Lines.
