@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="docs/logo.png" alt="sluice logo" width="600">
-</p>
-
 # sluice
 
 [![CI](https://github.com/overengineered-dev/sluice/actions/workflows/ci.yml/badge.svg)](https://github.com/overengineered-dev/sluice/actions/workflows/ci.yml)
@@ -9,18 +5,13 @@
 [![docs.rs](https://img.shields.io/docsrs/sluice-rs/latest)](https://docs.rs/sluice-rs)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Until now, reading the Maven Central index required the JVM, a custom script wiring up the Java `indexer-reader` library, and patience. Sluice is a single binary that does it 5x faster.
+A Rust parser and CLI for the [Maven Central Nexus binary index format](https://maven.apache.org/repository/central-index.html). Runs without a JVM, streams through the full index (~2.8 GB compressed, ~97M records) in a few minutes, and emits JSON Lines.
 
-A fast, streaming parser for the [Maven Central Nexus binary index format](https://maven.apache.org/repository/central-index.html), plus a CLI that turns index files into JSON Lines.
-
-For a byte-level specification of the wire format, see [`docs/binary-format.md`](docs/binary-format.md). For the incremental-update protocol, see [`docs/incremental-updates.md`](docs/incremental-updates.md).
+For a byte-level specification of the wire format, see [`docs/binary-format.md`](docs/binary-format.md). The incremental-update protocol is covered in [`docs/incremental-updates.md`](docs/incremental-updates.md).
 
 ## Layout
 
-This is a Cargo workspace with two crates:
-
-- **`crates/core`** — `sluice`, the library. I/O-neutral: operates on any `std::io::Read`, with no knowledge of gzip, HTTP, files, or JSON. Parses the Nexus binary header and record stream, decodes fields (including CESU-8 strings), and classifies documents into descriptors, group lists, and artifact add/remove records with parsed `UINFO` tuples.
-- **`crates/cli`** — `sluice-cli`, which builds the `sluice` binary. Handles gzip decoding, argument parsing, and JSON Lines output on stdout.
+The repo is a Cargo workspace with two crates. `crates/core` is the library, published as `sluice-rs`. It's I/O-neutral: it operates on any `std::io::Read` and has no knowledge of gzip, HTTP, files, or JSON. It parses the Nexus binary header and record stream, decodes fields (including CESU-8 strings), and classifies documents into descriptors, group lists, and artifact add/remove records with parsed `UINFO` tuples. `crates/cli` builds the `sluice` binary, which wraps the library with gzip decoding, argument parsing, and JSON Lines output.
 
 ## Installation
 
@@ -94,7 +85,7 @@ By default, records whose classifier is anything other than `NA` are filtered ou
 
 ## Library usage
 
-The core library is I/O-neutral — it reads from any `std::io::Read`. For gzipped index files, bring your own decompressor (e.g. `flate2`). The crate is published as `sluice-rs` on crates.io; the import path is `sluice`:
+The core library reads from any `std::io::Read`. For gzipped index files, bring your own decompressor — `flate2` works. The crate is published as `sluice-rs` on crates.io; the import path is `sluice`:
 
 ```toml
 [dependencies]
@@ -150,14 +141,14 @@ for doc in index {
 
 ## Performance
 
-Sluice is **~5x faster** than the Java [Apache Maven Indexer](https://github.com/apache/maven-indexer) `indexer-reader` on the full Maven Central index (2.8 GB compressed, ~97M documents):
+On the full Maven Central index (2.8 GB compressed, ~97M documents), sluice takes about 208 seconds end-to-end. The Java `indexer-reader` from [Apache Maven Indexer](https://github.com/apache/maven-indexer) takes about 1112 seconds on the same input.
 
 | Tool | Mean | Relative |
 |:---|---:|---:|
 | sluice (Rust) | 208s | 1.00 |
 | indexer-reader (Java) | 1112s | 5.35 |
 
-Both tools produce identical output across all ~97M records. The Java tool does additional per-record work (field expansion via `RecordExpander`) that sluice skips, so the workloads are not identical. See [`docs/benchmark.md`](docs/benchmark.md) for methodology, reproduction steps, and a detailed discussion.
+These numbers aren't directly comparable: the Java tool does additional per-record work (field expansion via `RecordExpander`) that sluice doesn't, so some of the gap is workload, not implementation. Output matches across all ~97M records. Methodology and reproduction steps are in [`docs/benchmark.md`](docs/benchmark.md).
 
 ## Development
 

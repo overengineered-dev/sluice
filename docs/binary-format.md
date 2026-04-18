@@ -45,7 +45,7 @@ Documents are written back-to-back with no separators and no outer length prefix
 | `field_count` | 4 bytes | `i32` BE | Number of fields in this document |
 | `fields` | variable | repeated | Exactly `field_count` entries |
 
-**End-of-stream detection.** There is no sentinel. The parser attempts to read the next 4-byte `field_count` and treats an EOF on that read as clean termination. EOF mid-document is a protocol error.
+**End-of-stream detection.** There is no sentinel. The parser reads the next 4-byte `field_count`; EOF on that read is clean termination. EOF anywhere else is a protocol error.
 
 ## 4. Field encoding
 
@@ -57,7 +57,7 @@ Each field is:
 | `name` | 2 + N bytes | Java `DataInput.readUTF()` | **2-byte** unsigned big-endian length prefix, then N bytes of Java Modified UTF-8 |
 | `value` | 4 + M bytes | Custom `readUTF()` | **4-byte** signed big-endian length prefix, then M bytes of Java Modified UTF-8 |
 
-**The critical asymmetry.** Field *names* use Java's standard `readUTF()` with a 2-byte length prefix (max 65,535 bytes). Field *values* use a custom reimplementation with a 4-byte length prefix (max ~2 GB). This was introduced in MINDEXER-28 because class-name lists in JAR content indexes routinely exceed 64 KB.
+**Asymmetric length prefixes.** Field *names* use Java's standard `readUTF()` with a 2-byte length prefix (max 65,535 bytes). Field *values* use a custom reimplementation with a 4-byte length prefix (max ~2 GB). The wider prefix (MINDEXER-28) was added for class-name lists in JAR content indexes, which routinely exceed 64 KB.
 
 ### Flag combinations
 
@@ -160,7 +160,7 @@ The `indexer-reader` module's `Record.Type` enum classifies documents as `DESCRI
 
 ## 7. What is NOT in the index
 
-Dependencies, parent POM references, SCM URLs, POM `<licenses>`, developers, organization, build config, properties, distribution management, modules, issue tracking, and CI info are **all absent**. The only license-adjacent data is the OSGi `Bundle-License` manifest header, which is not the same as POM licenses. To get dependency trees, parent relationships, or license metadata, you must fetch and parse individual POM files.
+Dependencies, parent POM references, SCM URLs, POM `<licenses>`, developers, organization, build config, properties, distribution management, modules, issue tracking, and CI info are absent. The only license-adjacent data is the OSGi `Bundle-License` manifest header, which differs from POM `<licenses>`. For dependency trees, parent relationships, or license metadata, fetch and parse the individual POM files.
 
 ## 8. Implementation notes for Rust parsers
 
@@ -232,4 +232,4 @@ For a comprehensive guide to the distribution layout, consumer protocol, and fai
 
 ## 10. Summary
 
-The transport format is a compact, self-framing binary protocol with exactly one version ever shipped (`0x01`). The core parsing loop is: read a 9-byte header, then repeatedly read documents (4-byte field count + N fields of `flags + name + value`) until EOF. The two non-obvious hazards are the **asymmetric length prefixes** (2-byte for names, 4-byte for values) and **Java Modified UTF-8** encoding. For incremental sync, the protocol is chain-id gated: match the chain, compute which sequential chunks are missing from the `.properties` file, download and merge them in order, and distinguish adds from deletes by the presence of `u` versus `del`.
+The transport format is a self-framing binary protocol with one version, `0x01`. Parsing loop: read the 9-byte header, then repeatedly read documents (4-byte field count + N fields of `flags + name + value`) until EOF. Two non-standard details: name lengths use a 2-byte prefix while value lengths use 4-byte, and strings are encoded as Java Modified UTF-8 rather than UTF-8. For incremental sync, fetch `.properties`, check the chain-id, download the missing numbered chunks, and merge them in ascending order. Adds carry a `u` field; deletes carry `del`.

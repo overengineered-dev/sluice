@@ -58,16 +58,14 @@ nexus.index.incremental-29=895   # oldest retained
 
 ## 3. The chain-id
 
-The `chain-id` is the linchpin of the incremental update system. It identifies the **lineage** that the current full dump and chunks belong to.
+The `chain-id` identifies the **lineage** that the current full dump and chunks belong to.
 
 - As long as the chain-id is stable, incremental chunks chain continuously off one another and off the full dump: chunk `N` is a valid delta on top of chunk `N-1`, which is valid on top of chunk `N-2`, all the way down to the full dump.
 - If Central ever **rotates** the chain-id, the chain restarts: every incremental chunk that existed before the rotation becomes meaningless, and every consumer must redownload the full dump and restart their local chain from the new `last-incremental`.
 
-**Stability in practice.** The chain-id observed on 2026-04-11 is `1318453614498`, and `nexus.index.time` shows the chain started on `2012-06-15`. So in ~14 years of Central operation the chain has **not** been rotated. A chain-id rotation is an exceptional event — but your client still needs to handle it correctly.
+**Stability in practice.** The chain-id observed on 2026-04-11 is `1318453614498`, and `nexus.index.time` shows the chain started on `2012-06-15`. So in ~14 years of Central operation the chain has **not** been rotated. Rotation is rare, but clients still need to handle it.
 
 ### The chain-id lives in the properties file, not in the `.gz`
-
-This is the most important and counter-intuitive thing to know about the format.
 
 Verified by decoding the `DESCRIPTOR` document inside the full dump byte-by-byte. The descriptor document contains exactly two fields:
 
@@ -83,9 +81,9 @@ That's it. There is **no chain-id anywhere in the binary file**. The only in-ban
 
 Practical consequences:
 
-1. **A `.gz` file is chain-anonymous on its own.** You cannot tell which chain it belongs to by inspecting it.
-2. **You must fetch the properties file alongside the binary and bind them together at download time.** Store both, or store the binary plus the chain-id that was current at fetch time.
-3. **The properties file is the canary.** A chain-id rotation is visible only through `.properties`; the binary will not look any different.
+1. **A `.gz` file alone does not tell you which chain it belongs to.** Chain membership is only derivable from the properties file fetched alongside it.
+2. **Fetch the properties file alongside the binary and bind them together at download time.** Store both, or store the binary plus the chain-id that was current at fetch time.
+3. **Chain rotation is visible only through `.properties`.** The binary itself does not change shape across a rotation.
 
 ## 4. The full dump
 
@@ -105,7 +103,7 @@ Structural layout of the decompressed stream:
 
 Two non-obvious points:
 
-- **The DESCRIPTOR is near the end**, not the beginning — it sits at roughly offset 30.3 GB, ~99% of the stream. A parser must stream through the whole file to reach it; there is no early-bail.
+- **The DESCRIPTOR sits at roughly offset 30.3 GB**, ~99% of the way through the stream. A parser must read through the whole file to reach it.
 - **Structural summary documents (`allGroups`, `rootGroups`) come *after* the descriptor**, at the tail. The `rootGroups` document's value is a flat pipe-separated list of every top-level groupId published on Central, which can be useful for coarse enumeration without parsing the whole binary.
 
 ## 5. Incremental chunks
@@ -114,7 +112,7 @@ Chunk files use the same format as the full dump's document stream: a 9-byte hea
 
 - An **add** (`u` field present) → apply as "artifact `g:a:v[:c[:e]]` now exists".
 - A **remove** (`del` field present) → apply as "artifact `g:a:v[:c[:e]]` no longer exists".
-- Structural records (`DESCRIPTOR`, `allGroups`, `rootGroups`) are rare or absent in chunks; the chunks observed in practice contain only adds and removes.
+- Structural records (`DESCRIPTOR`, `allGroups`, `rootGroups`) were absent in every chunk sampled; observed chunks contained only adds and removes.
 
 Chunks are numbered monotonically from chain start. Lower numbers are older. To replay, apply chunks in **ascending** order: `(stored+1), (stored+2), …, last-incremental`.
 
@@ -138,7 +136,7 @@ All republished within seconds of each other. **Do not use `Last-Modified` as a 
 
 **Publish rate.** The observed chain started on 2012-06-15 and had reached chunk 924 by 2026-04-08 — about 924 chunks in ~13.8 years, or **~66 chunks per year, roughly one every 5–6 days**. With a 30-chunk retention window that gives you a safe catch-up window of roughly **5–6 months**.
 
-> **Caveat on the cadence number.** This rate is a multi-year average, not a current measurement. Central may publish faster or slower today. To measure the current cadence precisely, poll `.properties` daily for a few weeks and record how often `last-incremental` advances.
+> This rate is a multi-year average. To measure the current publish cadence, poll `.properties` daily for a few weeks and count how often `last-incremental` advances.
 
 ## 7. Recommended consumer protocol
 
@@ -190,7 +188,7 @@ Implementation notes:
 - **Commit at chunk boundaries, not at the end.** If your consumer crashes halfway through chunk-replay, the next run picks up cleanly from `stored_last_incremental`.
 - **Pair the chain-id with the binary.** At step 2c, persist `chain-id` *before* you claim the full dump was processed successfully. Pairing is what lets step 3 detect rotation.
 - **`If-Modified-Since` and `If-None-Match` are safe shortcuts.** The server honors both. Your periodic poll of `.properties` can use them to skip the body when nothing changed — but still check `last-incremental` against stored, since a 304 on the properties file means nothing *at all* changed, not just "you are up to date".
-- **Rate limits.** `repo1.maven.org` is fronted by a CDN. There is no documented client rate limit, but be courteous — poll on an interval, not in a loop. Daily is plenty given the ~5-day publish cadence.
+- **Rate limits.** `repo1.maven.org` is fronted by a CDN with no documented client rate limit. Poll daily; the publish cadence is ~5 days, so anything more frequent buys you nothing.
 
 ## 8. Filtering guidance for your consumer
 

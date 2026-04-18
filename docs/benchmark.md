@@ -1,6 +1,6 @@
 # Comparative benchmark: sluice vs Java indexer-reader
 
-Until now, reading the Maven Central index required the JVM, a custom script wiring up the Java `indexer-reader` library, and patience. Sluice is a single binary that does it 5x faster.
+A correctness diff and throughput benchmark of sluice against the Apache Maven `indexer-reader` library on the full Maven Central index. Results are in [§Results](#results); methodology and caveats follow.
 
 ## What is compared
 
@@ -116,36 +116,25 @@ with `just bench-java` for a controlled comparison on the same run.
 
 ### The workloads are not identical
 
-The ~5x figure is a real-world comparison, not a controlled micro-benchmark.
-The two tools do different amounts of work per record:
+The ~5x figure compares end-to-end runtimes, not equivalent work per record:
 
 - **Sluice** (default): decompresses gzip → parses binary format → classifies
   records → parses UINFO (`u` field) into GAV coordinates → backfills extension
   from the INFO (`i`) field when the UINFO has only 4 segments (MINDEXER-41) →
   filters out classified records (classifier ≠ NA) → serializes to JSON →
   writes to stdout.
-- **Sluice `--full`**: same pipeline but without the classifier filter — all
-  records are emitted, matching the output scope of the Java tool.
+- **Sluice `--full`**: same pipeline without the classifier filter, matching
+  the Java tool's output scope.
 - **Java DumpIndex**: decompresses gzip → parses binary format → applies
-  `RecordExpander` (parses the INFO field to derive ~20 expanded fields
-  including `FILE_EXTENSION`, `SHA1`, `CLASSNAMES`, etc.) → formats
-  pipe-delimited string → writes to stdout.
+  `RecordExpander` (derives ~20 expanded fields from INFO including
+  `FILE_EXTENSION`, `SHA1`, `CLASSNAMES`, etc.) → formats pipe-delimited string
+  → writes to stdout.
 
-The Java `RecordExpander` step is nontrivial string processing that sluice
-largely skips. Sluice reads only the extension component from the INFO field
-(one of ~20 fields that `RecordExpander` derives), so most of the expansion
-work remains Java-only. This means part of Java's runtime is spent on work
-sluice doesn't do. An apples-to-apples comparison where both tools did
-identical work would show a **smaller** gap than ~5x.
-
-In default mode there is a second asymmetry: sluice filters out classified
-records (emitting ~19.7M) while Java emits all ~97M records. The `--full` mode
-eliminates this difference — both tools emit all records — but the per-record
-work gap from `RecordExpander` remains.
-
-The comparison is still meaningful — it measures what each tool actually delivers
-to the user end-to-end. But it should not be read as a pure "Rust vs Java
-parsing speed" benchmark.
+Two asymmetries: Java's `RecordExpander` derives ~20 fields sluice skips
+(sluice only needs extension), and in default mode sluice also filters out
+classifier-bearing records (~19.7M of 97M). `--full` mode removes the second
+asymmetry; the first remains. A parser-only benchmark with matched scopes
+would show a smaller gap.
 
 ### Where the performance difference comes from
 
