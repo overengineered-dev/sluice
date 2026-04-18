@@ -52,6 +52,7 @@ Releases are automated via [release-plz](https://release-plz.dev/). The flow:
 3. A maintainer reviews and merges the release PR.
 4. release-plz publishes the affected crates to crates.io, creates per-crate git tags (e.g. `sluice-rs-v0.2.0`, `sluice-cli-v0.2.0`), and creates per-crate GitHub Releases.
 5. For each `sluice-cli-v*` tag, the `release-binaries` workflow builds prebuilt CLI binaries for Linux (x86_64, aarch64), macOS (x86_64, aarch64), and Windows (x86_64), and attaches them to the GitHub Release.
+6. The same workflow then bumps [`overengineered-dev/homebrew-tap`](https://github.com/overengineered-dev/homebrew-tap) with a refreshed `Formula/sluice.rb` so `brew install overengineered-dev/tap/sluice` picks up the new version.
 
 ### Commit message format
 

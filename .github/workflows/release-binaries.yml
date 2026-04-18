@@ -10,26 +10,31 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.target }}
+    name: Build ${{ matrix.os_arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
+            os_arch: linux-amd64
             os: ubuntu-latest
             archive: tar.gz
           - target: aarch64-unknown-linux-gnu
+            os_arch: linux-arm64
             os: ubuntu-latest
             archive: tar.gz
             cross: true
           - target: x86_64-apple-darwin
+            os_arch: darwin-amd64
             os: macos-13
             archive: tar.gz
           - target: aarch64-apple-darwin
+            os_arch: darwin-arm64
             os: macos-latest
             archive: tar.gz
           - target: x86_64-pc-windows-msvc
+            os_arch: windows-amd64
             os: windows-latest
             archive: zip
     steps:
@@ -65,7 +70,7 @@ jobs:
         if: matrix.archive == 'tar.gz'
         shell: bash
         run: |
-          ARCHIVE="sluice-${{ steps.version.outputs.VERSION }}-${{ matrix.target }}.tar.gz"
+          ARCHIVE="sluice-${{ steps.version.outputs.VERSION }}-${{ matrix.os_arch }}.tar.gz"
           tar czf "$ARCHIVE" -C "target/${{ matrix.target }}/release" sluice
           echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
 
@@ -73,7 +78,7 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          $archive = "sluice-${{ steps.version.outputs.VERSION }}-${{ matrix.target }}.zip"
+          $archive = "sluice-${{ steps.version.outputs.VERSION }}-${{ matrix.os_arch }}.zip"
           Compress-Archive -Path "target/${{ matrix.target }}/release/sluice.exe" -DestinationPath $archive
           "ARCHIVE=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -82,3 +87,40 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: gh release upload "${{ github.ref_name }}" "${{ env.ARCHIVE }}" --clobber
+
+  bump-homebrew:
+    name: Bump Homebrew formula
+    needs: build
+    runs-on: ubuntu-latest
+    # Don't fail the release on tap hiccups: archives are already uploaded,
+    # so cargo install and direct downloads still work. Flip to false once
+    # the flow is proven stable.
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#sluice-cli-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Release to Homebrew tap
+        uses: Justintime50/homebrew-releaser@v2
+        with:
+          homebrew_owner: overengineered-dev
+          homebrew_tap: homebrew-tap
+          formula_folder: Formula
+          github_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          commit_owner: sluice-release-bot
+          commit_email: noreply@overengineered.dev
+          install: |
+            bin.install "sluice"
+          test: |
+            assert_match version.to_s, shell_output("#{bin}/sluice --version")
+          target_darwin_amd64: true
+          target_darwin_arm64: true
+          target_linux_amd64: true
+          target_linux_arm64: true
+          update_readme_table: false
+          skip_commit: false
