@@ -23,7 +23,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
-sluice = { path = "../core", version = "0.1.0", package = "sluice-rs", features = ["serde"] }
+sluice = { path = "../core", version = "0.1.1", package = "sluice-rs", features = ["serde"] }
 # tilde: see rust-version above — clap 4.6+ bumps the CLI MSRV further.
 clap = { version = "~4.5", features = ["derive"] }
 flate2 = "1"
