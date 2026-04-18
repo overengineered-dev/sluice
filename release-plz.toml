@@ -1,0 +1,13 @@
+# Configuration for release-plz (https://release-plz.dev/).
+# Workspace-level: applies to all packages unless overridden in a [[package]] block.
+
+[workspace]
+# Single shared changelog at repo root (overrides the per-crate default).
+changelog_path = "./CHANGELOG.md"
+# Block accidental SemVer breakage: a non-major bump that breaks the public API
+# fails the release PR.
+semver_check = true
+# Tag format defaults to "{{ package }}-v{{ version }}" which already matches
+# existing tags (sluice-rs-v0.1.0, sluice-cli-v0.1.0). Listed here for clarity.
+git_tag_name = "{{ package }}-v{{ version }}"
+git_release_name = "{{ package }} v{{ version }}"
