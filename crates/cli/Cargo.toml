@@ -3,7 +3,7 @@ name = "sluice-cli"
 # Drifted ahead of the workspace (0.1.1) by Homebrew-pipeline patches that
 # didn't touch sluice-rs. Restore `version.workspace = true` next time both
 # crates bump together.
-version = "0.1.4"
+version = "0.1.5"
 edition.workspace = true
 # Higher than the workspace MSRV: clap 4.5 transitively pulls clap_lex 1.1
 # which requires edition2024 (stabilized in Rust 1.85).
