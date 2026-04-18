@@ -3,7 +3,7 @@ name = "sluice-cli"
 # Pinned ahead of the workspace (0.1.1) so release-plz publishes v0.1.2 on
 # the next main push. Drop back to `version.workspace = true` the next time
 # both crates are bumped together.
-version = "0.1.2"
+version = "0.1.3"
 edition.workspace = true
 # Higher than the workspace MSRV: clap 4.5 transitively pulls clap_lex 1.1
 # which requires edition2024 (stabilized in Rust 1.85).
