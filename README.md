@@ -6,8 +6,8 @@
 
 [![CI](https://github.com/overengineered-dev/sluice/actions/workflows/ci.yml/badge.svg)](https://github.com/overengineered-dev/sluice/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/sluice-rs.svg)](https://crates.io/crates/sluice-rs)
-[![docs.rs](https://docs.rs/sluice-rs/badge.svg)](https://docs.rs/sluice-rs)
-[![License: Apache-2.0](https://img.shields.io/crates/l/sluice-rs.svg)](LICENSE)
+[![docs.rs](https://img.shields.io/docsrs/sluice-rs/latest)](https://docs.rs/sluice-rs)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 Until now, reading the Maven Central index required the JVM, a custom script wiring up the Java `indexer-reader` library, and patience. Sluice is a single binary that does it 5x faster.
 
