@@ -1,0 +1,32 @@
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "warn"
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "0BSD",
+    "Zlib",
+    "Unlicense",
+    "Unicode-3.0",
+]
+
+[[licenses.clarify]]
+name = "unicode-ident"
+expression = "(MIT OR Apache-2.0) AND Unicode-3.0"
+license-files = [{ path = "LICENSE-UNICODE", hash = 0x3fb01745 }]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

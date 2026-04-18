@@ -1,0 +1,15 @@
+---
+source: crates/core/tests/fixture_chunk.rs
+assertion_line: 88
+expression: "first_na_adds.join(\"\\n\")"
+---
+zone.clanker | wrkx-tasks | 0.35.1 | NA | pom.sha512
+zone.clanker | wrkx-tasks | 0.35.0 | NA | pom.sha512
+zone.clanker | wrkx-tasks | 0.34.3 | NA | pom.sha512
+zone.clanker | wrkx-tasks | 0.34.2 | NA | pom.sha512
+zone.clanker | wrkx-tasks | 0.34.1 | NA | pom.sha512
+zone.clanker | srcx-tasks | 0.35.1 | NA | pom.sha512
+zone.clanker | srcx-tasks | 0.35.0 | NA | pom.sha512
+zone.clanker | srcx-tasks | 0.34.3 | NA | pom.sha512
+zone.clanker | srcx-tasks | 0.34.2 | NA | pom.sha512
+zone.clanker | srcx-tasks | 0.34.1 | NA | pom.sha512

@@ -1,0 +1,9 @@
+target/
+fixtures/full/
+fixtures/chunk-latest.gz
+*.swp
+.DS_Store
+.claude/
+vendor/
+scripts/java/lib/
+scripts/java/*.class
