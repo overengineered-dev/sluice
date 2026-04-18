@@ -4,12 +4,19 @@ on:
   push:
     tags:
       - 'sluice-cli-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to bump in the Homebrew tap (e.g., 0.1.1). Archives must already exist on the matching release.'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   build:
+    if: github.event_name == 'push'
     name: Build ${{ matrix.os_arch }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -90,37 +97,126 @@ jobs:
 
   bump-homebrew:
     name: Bump Homebrew formula
-    needs: build
+    needs: [build]
+    # Runs on tag push after `build` succeeds, or on a manual workflow_dispatch
+    # (used to backfill the tap for an already-uploaded release without cutting
+    # a new version).
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.build.result == 'success')
     runs-on: ubuntu-latest
-    # Don't fail the release on tap hiccups: archives are already uploaded,
-    # so cargo install and direct downloads still work. Flip to false once
-    # the flow is proven stable.
-    continue-on-error: true
+    env:
+      REPO_SLUG: ${{ github.repository }}
+      TAP_OWNER: overengineered-dev
+      TAP_REPO: homebrew-tap
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Determine version from tag
-        id: version
+      - name: Resolve version and tag
+        id: resolve
         shell: bash
-        run: echo "VERSION=${GITHUB_REF_NAME#sluice-cli-v}" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+            TAG="sluice-cli-v${VERSION}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG#sluice-cli-v}"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "TAG=${TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: Release to Homebrew tap
-        uses: Justintime50/homebrew-releaser@v2
+      - name: Download archives and compute SHA256
+        id: checksums
+        shell: bash
+        env:
+          VERSION: ${{ steps.resolve.outputs.VERSION }}
+          TAG: ${{ steps.resolve.outputs.TAG }}
+        run: |
+          set -euo pipefail
+          base="https://github.com/${REPO_SLUG}/releases/download/${TAG}"
+          for target in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64; do
+            name="sluice-${VERSION}-${target}.tar.gz"
+            url="${base}/${name}"
+            echo "Fetching ${url}"
+            sha=$(curl -fsSL "$url" | sha256sum | awk '{print $1}')
+            key=$(echo "$target" | tr 'a-z-' 'A-Z_')
+            echo "URL_${key}=${url}" >> "$GITHUB_OUTPUT"
+            echo "SHA_${key}=${sha}" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Render Formula/sluice.rb
+        shell: bash
+        env:
+          VERSION: ${{ steps.resolve.outputs.VERSION }}
+          URL_DARWIN_AMD64: ${{ steps.checksums.outputs.URL_DARWIN_AMD64 }}
+          URL_DARWIN_ARM64: ${{ steps.checksums.outputs.URL_DARWIN_ARM64 }}
+          URL_LINUX_AMD64:  ${{ steps.checksums.outputs.URL_LINUX_AMD64 }}
+          URL_LINUX_ARM64:  ${{ steps.checksums.outputs.URL_LINUX_ARM64 }}
+          SHA_DARWIN_AMD64: ${{ steps.checksums.outputs.SHA_DARWIN_AMD64 }}
+          SHA_DARWIN_ARM64: ${{ steps.checksums.outputs.SHA_DARWIN_ARM64 }}
+          SHA_LINUX_AMD64:  ${{ steps.checksums.outputs.SHA_LINUX_AMD64 }}
+          SHA_LINUX_ARM64:  ${{ steps.checksums.outputs.SHA_LINUX_ARM64 }}
+        run: |
+          set -euo pipefail
+          cat > sluice.rb <<RUBY
+          class Sluice < Formula
+            desc "CLI that parses Maven Central index chunks into JSON Lines"
+            homepage "https://github.com/${REPO_SLUG}"
+            version "${VERSION}"
+            license "Apache-2.0"
+
+            on_macos do
+              on_arm do
+                url "${URL_DARWIN_ARM64}"
+                sha256 "${SHA_DARWIN_ARM64}"
+              end
+              on_intel do
+                url "${URL_DARWIN_AMD64}"
+                sha256 "${SHA_DARWIN_AMD64}"
+              end
+            end
+
+            on_linux do
+              on_intel do
+                url "${URL_LINUX_AMD64}"
+                sha256 "${SHA_LINUX_AMD64}"
+              end
+              on_arm do
+                url "${URL_LINUX_ARM64}"
+                sha256 "${SHA_LINUX_ARM64}"
+              end
+            end
+
+            def install
+              bin.install "sluice"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/sluice --version")
+            end
+          end
+          RUBY
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v4
         with:
-          homebrew_owner: overengineered-dev
-          homebrew_tap: homebrew-tap
-          formula_folder: Formula
-          github_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          commit_owner: sluice-release-bot
-          commit_email: noreply@overengineered.dev
-          install: |
-            bin.install "sluice"
-          test: |
-            assert_match version.to_s, shell_output("#{bin}/sluice --version")
-          target_darwin_amd64: true
-          target_darwin_arm64: true
-          target_linux_amd64: true
-          target_linux_arm64: true
-          update_readme_table: false
-          skip_commit: false
+          repository: ${{ env.TAP_OWNER }}/${{ env.TAP_REPO }}
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Commit and push formula
+        shell: bash
+        env:
+          VERSION: ${{ steps.resolve.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          mkdir -p tap/Formula
+          mv sluice.rb tap/Formula/sluice.rb
+          cd tap
+          git config user.name "sluice-release-bot"
+          git config user.email "noreply@overengineered.dev"
+          git add Formula/sluice.rb
+          if git diff --cached --quiet; then
+            echo "Formula unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "sluice ${VERSION}"
+          git push
