@@ -57,7 +57,7 @@ jobs:
         # cross-target to stable, but rust-toolchain.toml makes cargo use
         # 1.85.0, which then lacks the target -> E0463 "can't find crate
         # for `core`" on aarch64-unknown-linux-gnu.
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: ${{ matrix.target }}
 
